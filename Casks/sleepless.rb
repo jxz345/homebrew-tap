@@ -3,7 +3,7 @@
 # https://github.com/jxz345/Sleepless/blob/main/UPDATE_NOTES.md
 cask "sleepless" do
   version "1.2.7-jxz.1"
-  sha256 "567ebbbd870bf95d63babf0b2f28629919e8d1a1eadda38aa9934d71e90212a7"
+  sha256 "c1f5eed3e7185499120855948280272d8922fa2f79178eec9c95dbbd1cd94dd6"
 
   url "https://github.com/jxz345/Sleepless/releases/download/v#{version}/Sleepless-#{version}.zip"
   name "Sleepless"
@@ -45,11 +45,22 @@ cask "sleepless" do
     This is the jxz345 fork of Sleepless. Do not install it alongside
     aboudjem/tap/sleepless: both install #{appdir}/Sleepless.app.
 
-    Sleepless is ad-hoc signed (not notarized). Approve the first launch in
-    System Settings then Privacy & Security then "Open Anyway".
+    Sleepless is ad-hoc signed (not notarized). Launch it, then try
+    System Settings > Privacy & Security > "Open Anyway" if macOS blocks it.
 
-    To let it toggle lid-close sleep without a password prompt, run once:
-      #{appdir}/Sleepless.app/Contents/Resources/grant.sh
+    If launch hangs or "Open Anyway" is absent or ineffective, quit the stalled
+    app. After verifying the download, explicitly remove quarantine for this app:
+      codesign --verify --deep --strict --verbose=2 "#{appdir}/Sleepless.app"
+      xattr -dr com.apple.quarantine "#{appdir}/Sleepless.app"
+      open "#{appdir}/Sleepless.app"
+    If xattr reports "Operation not permitted", allow the terminal's host app
+    under Privacy & Security > App Management, then retry.
+    Recovery details and checks:
+      https://github.com/jxz345/Sleepless/blob/main/UPDATE_NOTES.md#8-installation-recovery-on-macos-27-2026-10-07
+
+    Once the cup appears, enable keep-awake to set up the permission grant if
+    needed. Manual fallback:
+      /bin/bash "#{appdir}/Sleepless.app/Contents/Resources/grant.sh"
 
     Quitting or uninstalling Sleepless restores normal sleep. To also remove the
     passwordless sudoers grant and preferences, uninstall with:
