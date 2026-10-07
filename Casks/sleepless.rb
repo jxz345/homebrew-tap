@@ -3,7 +3,7 @@
 # https://github.com/jxz345/Sleepless/blob/main/UPDATE_NOTES.md
 cask "sleepless" do
   version "1.2.7-jxz.1"
-  sha256 "c1f5eed3e7185499120855948280272d8922fa2f79178eec9c95dbbd1cd94dd6"
+  sha256 "2b85fbae94c08994c16563ffe5fa6a22e1f6cc13f68c983ff424b4bc34e6acc0"
 
   url "https://github.com/jxz345/Sleepless/releases/download/v#{version}/Sleepless-#{version}.zip"
   name "Sleepless"
@@ -21,16 +21,29 @@ cask "sleepless" do
   app "Sleepless.app"
 
   # Quitting the app restores normal sleep (applicationWillTerminate). The script is a
-  # backstop for a stale state with the app not running. It calls sudo -n DIRECTLY with
-  # the exact argv the sudoers grant allows: `script ... sudo: true` would make Homebrew
-  # run `sudo -E <env> --`, which the NOPASSWD rule (no SETENV) refuses, forcing a
-  # password prompt. If the grant is already gone it fails silently; a reboot resets anyway.
-  # These directives also run on `brew upgrade`, which is harmless (just turns it off).
+  # backstop for a stale state with the app not running. Never delete the app while
+  # sleep remains disabled. Call sudo directly to match the narrowly scoped grant.
+  # This also runs during upgrades; preferences and the grant belong in zap only.
   uninstall quit:   "com.aboudjem.Sleepless",
             script: {
-              executable:   "/usr/bin/sudo",
-              args:         ["-n", "/usr/bin/pmset", "-a", "disablesleep", "0"],
-              must_succeed: false,
+              executable: "/bin/bash",
+              args:       ["-c", <<~SH],
+                set -euo pipefail
+                state() {
+                  /usr/bin/pmset -g | /usr/bin/awk '$1 == "SleepDisabled" {print $2}'
+                }
+                current=$(state)
+                case "$current" in
+                  0) exit 0 ;;
+                  1) ;;
+                  *) echo "Cannot read the sleep setting; keeping Sleepless installed." >&2; exit 1 ;;
+                esac
+                if ! /usr/bin/sudo -n /usr/bin/pmset -a disablesleep 0 || [ "$(state)" != 0 ]; then
+                  echo "Cannot restore normal sleep; keeping Sleepless installed." >&2
+                  echo "Run: sudo /usr/bin/pmset -a disablesleep 0, then retry uninstall." >&2
+                  exit 1
+                fi
+              SH
             }
 
   # The passwordless grant is removed only on --zap: putting it in `uninstall` would
@@ -62,8 +75,10 @@ cask "sleepless" do
     needed. Manual fallback:
       /bin/bash "#{appdir}/Sleepless.app/Contents/Resources/grant.sh"
 
-    Quitting or uninstalling Sleepless restores normal sleep. To also remove the
-    passwordless sudoers grant and preferences, uninstall with:
+    Uninstall restores normal sleep and stops if that cannot be verified.
+    The app's "Uninstall…" button opens Terminal for complete removal, including
+    the login item, passwordless grant, preferences, and Homebrew receipt.
+    For Homebrew's additional cleanup from Terminal:
       brew uninstall --zap --cask jxz345/tap/sleepless
   EOS
 end
