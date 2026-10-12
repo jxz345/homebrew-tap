@@ -2,8 +2,8 @@
 # release, taking both from the release's SHA256SUMS. Background:
 # https://github.com/jxz345/Sleepless/blob/main/UPDATE_NOTES.md
 cask "sleepless" do
-  version "1.2.7-jxz.1"
-  sha256 "2b85fbae94c08994c16563ffe5fa6a22e1f6cc13f68c983ff424b4bc34e6acc0"
+  version "1.2.7-jxz.2"
+  sha256 "d3443ffe79835f41e39efcf17d909192568fd729057d4103ebf149b2554f863e"
 
   url "https://github.com/jxz345/Sleepless/releases/download/v#{version}/Sleepless-#{version}.zip"
   name "Sleepless"
