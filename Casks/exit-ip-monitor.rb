@@ -1,6 +1,6 @@
 # Cask for Exit IP Monitor. Update `version` and `sha256` after each release, taking both
 # from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
-# https://github.com/jxz345/exit-ip-widget#install-on-another-mac
+# https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
   version "1.0"
   sha256 "e967d7b9965b8da78c2af68c4ee0a0c67920822de07bf32512bad23bb11c044d"
@@ -46,6 +46,6 @@ cask "exit-ip-monitor" do
       open "#{appdir}/ExitIPMonitor.app"
     If xattr reports "Operation not permitted", allow the terminal's host app
     under Privacy & Security > App Management, then retry.
-    Details: https://github.com/jxz345/exit-ip-widget#install-on-another-mac
+    Details: https://github.com/jxz345/exit-ip-widget#first-launch
   EOS
 end
