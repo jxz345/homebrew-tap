@@ -43,7 +43,8 @@ open /Applications/ExitIPMonitor.app
 
 The app is ad-hoc signed (not notarized). Approve the first launch in **System Settings → Privacy &
 Security → Open Anyway**. If the launch hangs (the process starts but no menu-bar flag appears) or
-**Open Anyway** is absent or ineffective, quit it, verify the app, and remove quarantine for this app
+**Open Anyway** is absent or ineffective, first close any "ExitIPMonitor" Not Opened dialog with
+**Done** (later launches wait on it), quit the app, verify it, and remove quarantine for this app
 only:
 
 ```sh
@@ -53,6 +54,7 @@ xattr -dr com.apple.quarantine /Applications/ExitIPMonitor.app
 open /Applications/ExitIPMonitor.app
 ```
 
+If it still hangs, restart the Mac (this ends any pending Gatekeeper evaluation) and open it again.
 If `xattr` reports **Operation not permitted**, allow the terminal's host app (Terminal, or Visual
 Studio Code) under **Privacy & Security → App Management**, then retry.
 
