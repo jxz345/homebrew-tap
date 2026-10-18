@@ -42,21 +42,18 @@ open /Applications/ExitIPMonitor.app
 ```
 
 The app is ad-hoc signed (not notarized). Approve the first launch in **System Settings → Privacy &
-Security → Open Anyway**. If the launch hangs (the process starts but no menu-bar flag appears) or
-**Open Anyway** is absent or ineffective, first close any "ExitIPMonitor" Not Opened dialog with
-**Done** (later launches wait on it), quit the app, verify it, and remove quarantine for this app
-only:
+Security → Open Anyway**. Close any "ExitIPMonitor" Not Opened dialog with **Done** before
+approving it. After approval, verify that the installed app completed startup:
 
 ```sh
-pkill -x ExitIPMonitor
-codesign --verify --deep --strict --verbose=2 /Applications/ExitIPMonitor.app
-xattr -dr com.apple.quarantine /Applications/ExitIPMonitor.app
-open /Applications/ExitIPMonitor.app
+/bin/bash /Applications/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh --launch --timeout 60
 ```
 
-If it still hangs, restart the Mac (this ends any pending Gatekeeper evaluation) and open it again.
-If `xattr` reports **Operation not permitted**, allow the terminal's host app (Terminal, or Visual
-Studio Code) under **Privacy & Security → App Management**, then retry.
+The check verifies the signature, installed build, and a live main-thread heartbeat. A process
+appearing in Activity Monitor alone is not success. If startup times out, it saves bounded
+diagnostics under `~/Library/Application Support/ExitIPMonitor/Logs`; daemon setup logs are under
+`/Library/Logs/ExitIPMonitor`. Quarantine and macOS security settings remain intact. See
+[launch diagnostics](https://github.com/jxz345/exit-ip-widget#launch-diagnostics).
 
 ```sh
 brew uninstall --cask jxz345/tap/exit-ip-monitor          # quits and removes the app

@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 # Cask for Exit IP Monitor. Update `version` and `sha256` after each release, taking both
 # from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
   version "1.0"
-  sha256 "ddabe35f966336383972b241158bf3041505536473748e13fd323e10872a52c2"
+  sha256 "16a3fcc09ba8a0c6bfac8e5daaa8b4e802617daae4a543a0a111630ef72e7149"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
@@ -88,17 +90,15 @@ cask "exit-ip-monitor" do
     It is a menu-bar app: the dashboard opens on first launch and whenever
     you open the app again, and the country flag is in the menu bar.
 
-    If launch hangs or "Open Anyway" is absent or ineffective, first close any
-    "ExitIPMonitor" Not Opened dialog with Done (later launches wait on it), quit
-    the stalled app, and after verifying it, remove quarantine for this app only:
-      pkill -x ExitIPMonitor
-      codesign --verify --deep --strict --verbose=2 "#{appdir}/ExitIPMonitor.app"
-      xattr -dr com.apple.quarantine "#{appdir}/ExitIPMonitor.app"
-      open "#{appdir}/ExitIPMonitor.app"
-    If it still hangs, restart the Mac (ending any pending evaluation) and open it.
-    If xattr reports "Operation not permitted", allow the terminal's host app
-    under Privacy & Security > App Management, then retry.
-    Details: https://github.com/jxz345/exit-ip-widget#first-launch
+    After normal Open Anyway approval, verify that the installed app really
+    finished startup (a process in Activity Monitor alone is not success):
+      /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --launch --timeout 60
+    This checks the main-thread heartbeat and installed build, including a
+    verified App Translocation copy. It does not change quarantine or security
+    settings. On failure it prints the directory containing local diagnostics.
+    App and launch logs: ~/Library/Application Support/ExitIPMonitor/Logs
+    Daemon setup logs: /Library/Logs/ExitIPMonitor
+    Details: https://github.com/jxz345/exit-ip-widget#launch-diagnostics
 
     Installing asks for your administrator password once, to set up the
     Tailscale → Clash Verge provider daemon (http://127.0.0.1:18766). It is
