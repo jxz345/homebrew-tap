@@ -5,7 +5,7 @@
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
   version "1.0"
-  sha256 "7787aa64e9595796d007812d43d3627926b6550ce2ade3827563938e0dbbd766"
+  sha256 "0c608365a6f152300f0495cc30c99d1f28a0862f075d2440484b8b531c579c6b"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
@@ -91,12 +91,14 @@ cask "exit-ip-monitor" do
     directly as a normal window. The Dock icon appears while the dashboard
     is open or minimized and disappears when it closes; monitoring continues.
 
-    After normal Open Anyway approval, verify that the installed app really
-    finished startup (a process in Activity Monitor alone is not success):
-      /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --launch --timeout 60
+    Build 1.0 (6) adds external launch tracing. Start it before macOS approval
+    to capture authentication even when the app cannot start:
+      /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --trace --launch --timeout 180
     This checks the main-thread heartbeat and installed build, including a
     verified App Translocation copy. It does not change quarantine or security
-    settings. On failure it prints the directory containing local diagnostics.
+    settings. It prints a local summary and reports missing evidence; trace
+    collectors stop on success, failure, timeout, and cancellation. Build 6 adds
+    diagnostics and does not claim to fix the intermittent approval stall.
     App and launch logs: ~/Library/Application Support/ExitIPMonitor/Logs
     Daemon setup logs: /Library/Logs/ExitIPMonitor
     Details: https://github.com/jxz345/exit-ip-widget#launch-diagnostics
