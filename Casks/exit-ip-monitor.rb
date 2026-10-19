@@ -5,7 +5,7 @@
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
   version "1.0"
-  sha256 "5ab89a3da32780db0dc36f88ccf41e9b7a319049ce146c7c745de1bb08a40811"
+  sha256 "7787aa64e9595796d007812d43d3627926b6550ce2ade3827563938e0dbbd766"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
@@ -87,8 +87,9 @@ cask "exit-ip-monitor" do
   caveats <<~EOS
     Exit IP Monitor is ad-hoc signed (not notarized). Launch it, then try
     System Settings > Privacy & Security > "Open Anyway" if macOS blocks it.
-    It is a menu-bar app: the dashboard opens on first launch and whenever
-    you open the app again, and the country flag is in the menu bar.
+    The country flag stays in the menu bar. Click it to open the dashboard
+    directly as a normal window. The Dock icon appears while the dashboard
+    is open or minimized and disappears when it closes; monitoring continues.
 
     After normal Open Anyway approval, verify that the installed app really
     finished startup (a process in Activity Monitor alone is not success):
