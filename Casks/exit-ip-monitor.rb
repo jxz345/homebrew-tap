@@ -5,7 +5,7 @@
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
   version "1.0"
-  sha256 "0c608365a6f152300f0495cc30c99d1f28a0862f075d2440484b8b531c579c6b"
+  sha256 "d089c99e6f9036b5b843b85f31e4a1d9b793ef25b6c14f849f50d3e9dcb899c6"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
@@ -21,68 +21,310 @@ cask "exit-ip-monitor" do
 
   app "ExitIPMonitor.app"
 
-  # One administrator prompt at install and reinstall sets up the Tailscale → Clash Verge provider
-  # daemon and its removal grant, like Sleepless's service. Apple's /bin/bash runs the bundled
-  # script, which takes the user from SUDO_USER and prints whether Tailscale and Clash Verge Rev
-  # are installed; neither is required. Skipped while the user has turned the daemon off
-  # (`daemon.sh remove`). A busy port must not fail the install, so the step may fail.
-  postflight_steps do
-    unless_path_exists "Library/Application Support/ExitIPMonitor/tailscale-verge-off", base: :home do
-      run "/bin/bash",
-          args:         ["{{appdir}}/ExitIPMonitor.app/Contents/Resources/daemon.sh", "install"],
-          sudo:         true,
-          must_succeed: false,
-          print_stdout: true
-    end
-  end
-
-  # The daemon is removed here too, so deleting the app never leaves root code running; the new
-  # version's postflight sets it up again on upgrade. The script runs only the commands the
-  # removal grant allows, with sudo -n, because Homebrew's own `launchctl` and `delete` stanzas
-  # always ask for a password; without the grant it prints the command to run instead. The
-  # grant goes last, once nothing else remains (daemon.sh install writes it again).
+  # App-only install. Optional privileged setup happens in the dashboard.
+  # The inline helper also supports installed releases without cleanup-installation.sh.
+  # Keep in sync with Scripts/sync-homebrew-cleanup.py in exit-ip-widget.
   uninstall quit:   "com.example.exitipmonitor",
             script: {
-              executable: "/bin/bash",
-              args:       ["-c", <<~SH],
-                set -uo pipefail
-                label=com.example.exitipmonitor.tailscale-verge
-                http="$label-http"
-                plist="/Library/LaunchDaemons/$label.plist"
-                http_plist="/Library/LaunchDaemons/$http.plist"
-                support="/Library/Application Support/ExitIPMonitor"
-                grant=/etc/sudoers.d/exitipmonitor-tailscale-verge
-                present() { [ -e "$plist" ] || [ -e "$http_plist" ] || [ -e "$support" ]; }
-                if present; then
-                  /usr/bin/sudo -n /bin/launchctl bootout "system/$http" 2>/dev/null || true
-                  /usr/bin/sudo -n /bin/launchctl bootout "system/$label" 2>/dev/null || true
-                  /usr/bin/sudo -n /bin/rm -f "$http_plist" 2>/dev/null || true
-                  /usr/bin/sudo -n /bin/rm -f "$plist" 2>/dev/null || true
-                  /usr/bin/sudo -n /bin/rm -rf "$support" 2>/dev/null || true
+              executable:   "/bin/bash",
+              must_succeed: true,
+              args:         ["-c", <<~'SH', "--", "#{appdir}/ExitIPMonitor.app"],
+                # BEGIN GENERATED CLEANUP
+                #!/bin/bash
+                # Shared by the release installer, launch diagnostics, and daemon setup. Bash 3.2 compatible.
+                # No xtrace: command arguments can contain private data. Log descriptive step names instead.
+
+                step_log() { printf '%s %-6s %s\n' "$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" >&2; }
+
+                # BSD mktemp only randomizes trailing Xs (a trailing .log would produce a literal filename).
+                new_step_log() { /usr/bin/mktemp "$1/$2-XXXXXXXX"; }
+
+                # Each command gets its own process group, so a timed-out command's children cannot keep
+                # Homebrew's output pipe open. Only that group is terminated; unrelated jobs are untouched.
+                bounded_command() (
+                    set +e
+                    local limit=$1 label=$2 pid ticks=0 status started=$SECONDS
+                    shift 2
+                    step_log BEGIN "$label (timeout ${limit}s)"
+                    set -m
+                    "$@" &
+                    pid=$!
+                    set +m
+                    trap '/bin/kill -TERM -- "-$pid" 2>/dev/null; /bin/sleep 0.2; /bin/kill -KILL -- "-$pid" 2>/dev/null; exit 130' INT TERM
+                    while /bin/kill -0 "$pid" 2>/dev/null; do
+                        if [ "$ticks" -ge "$((limit * 10))" ]; then
+                            /bin/kill -TERM -- "-$pid" 2>/dev/null || true
+                            /bin/sleep 0.2
+                            /bin/kill -KILL -- "-$pid" 2>/dev/null || true
+                            wait "$pid" 2>/dev/null || true
+                            step_log ERROR "$label timed out after $((SECONDS - started))s (status 124)"
+                            exit 124
+                        fi
+                        /bin/sleep 0.1
+                        ticks=$((ticks + 1))
+                    done
+                    wait "$pid" 2>/dev/null
+                    status=$?
+                    step_log END "$label status=$status elapsed=$((SECONDS - started))s"
+                    exit "$status"
+                )
+
+                #!/bin/bash
+                # Prepare a clean uninstall/reinstall without running application code.
+                # Usage: /bin/bash cleanup-installation.sh --app /Applications/ExitIPMonitor.app
+                # Stops only this bundle's processes and removes the optional provider. Does not delete the
+                # app, user settings, credentials or logs, install anything, or change macOS security settings.
+                # The cask embeds this file plus command-support.sh so cleanup also works with older bundles.
+
+                if ! declare -F bounded_command >/dev/null; then
+                    source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/command-support.sh"
                 fi
-                if present; then
-                  echo "Could not remove the Tailscale → Clash Verge daemon without a password. Run:" >&2
-                  echo "  sudo /bin/bash '#{appdir}/ExitIPMonitor.app/Contents/Resources/daemon.sh' remove" >&2
-                  echo "or, if the app is gone:" >&2
-                  echo "  sudo launchctl bootout system/$http; sudo launchctl bootout system/$label; sudo rm -rf '$plist' '$http_plist' '$support' $grant" >&2
-                elif [ -e "$grant" ]; then
-                  /usr/bin/sudo -n /bin/rm -f "$grant" 2>/dev/null || true
-                fi
+
+                cleanup_process_table() { bounded_command 5 inspect-processes /bin/ps -axww -o pid=,uid=,lstart=,comm= 2>/dev/null; }
+                cleanup_command_table() { bounded_command 5 inspect-workers /bin/ps -axww -o pid=,command= 2>/dev/null; }
+                cleanup_pause() { /bin/sleep 0.2; }
+                cleanup_signal() { /bin/kill -"$1" "$2"; }
+                cleanup_exists() { [ -e "$1" ] || [ -L "$1" ]; }
+
+                cleanup_translocation_matches() {
+                    local running=$1 expected actual
+                    case "$running" in
+                        /private/var/folders/*/T/AppTranslocation/*/d/ExitIPMonitor.app|/var/folders/*/T/AppTranslocation/*/d/ExitIPMonitor.app) ;;
+                        *) return 1 ;;
+                    esac
+                    # Cache validated bundle paths within this invocation, never across uninstall attempts.
+                    case "${cleanup_translocations:-}" in *"|$running|"*) return 0 ;; esac
+                    expected=$(bounded_command 5 identity /usr/bin/codesign -d --arch "$(/usr/bin/uname -m)" --verbose=4 "$cleanup_app" 2>&1 |
+                        /usr/bin/sed -n 's/^CDHash=//p')
+                    actual=$(bounded_command 5 identity /usr/bin/codesign -d --arch "$(/usr/bin/uname -m)" --verbose=4 "$running" 2>&1 |
+                        /usr/bin/sed -n 's/^CDHash=//p')
+                    [ -n "$expected" ] && [ "$expected" = "$actual" ] || return 1
+                    bounded_command 5 translocation-signature /usr/bin/codesign --verify --deep --strict "$running" || return 1
+                    cleanup_translocations="${cleanup_translocations:-}|$running|"
+                }
+
+                # A failed inspection is an error, never an empty process list. The start time and executable
+                # are retained with each PID and checked again immediately before sending a signal.
+                cleanup_find_processes() {
+                    local table pid uid weekday month day time year path running
+                    cleanup_matches=()
+                    table=$(cleanup_process_table) || { step_log ERROR 'Cannot inspect app processes.'; return 1; }
+                    [ -n "$table" ] || { step_log ERROR 'Process inspection returned no data.'; return 1; }
+                    while read -r pid uid weekday month day time year path; do
+                        case "$path" in */Contents/MacOS/ExitIPMonitor) ;; *) continue ;; esac
+                        [[ "$pid" =~ ^[0-9]+$ && "$uid" =~ ^[0-9]+$ ]] && [ "$pid" -gt 1 ] && [ -n "$year" ] || return 1
+                        running=${path%/Contents/MacOS/ExitIPMonitor}
+                        if [ "$running" != "$cleanup_app" ] && ! [ "$running" -ef "$cleanup_app" ]; then
+                            case "$running" in
+                                */T/AppTranslocation/*/d/ExitIPMonitor.app)
+                                    cleanup_translocation_matches "$running" || {
+                                        step_log ERROR "Cannot associate translocated process $pid with the target app; leaving it untouched."
+                                        return 1
+                                    } ;;
+                                *) continue ;;
+                            esac
+                        fi
+                        [ "$uid" = "$cleanup_uid" ] || {
+                            step_log ERROR "Target app process $pid belongs to user $uid; it was not signalled."
+                            return 1
+                        }
+                        cleanup_matches+=("$pid|$uid|$weekday $month $day $time $year|$path")
+                    done <<< "$table"
+                }
+
+                cleanup_signal_matches() {
+                    local signal=$1 candidate current pid still_present
+                    local targets=("${cleanup_matches[@]:-}")
+                    for candidate in "${targets[@]}"; do
+                        cleanup_find_processes || return 1
+                        still_present=0
+                        for current in "${cleanup_matches[@]:-}"; do
+                            [ "$candidate" != "$current" ] || still_present=1
+                        done
+                        [ "$still_present" = 1 ] || continue
+                        pid=${candidate%%|*}
+                        step_log INFO "Sending $signal to verified app process $pid."
+                        if ! cleanup_signal "$signal" "$pid"; then
+                            cleanup_find_processes || return 1
+                            for current in "${cleanup_matches[@]:-}"; do
+                                if [ "$candidate" = "$current" ]; then
+                                    step_log ERROR "Could not send $signal to app process $pid."
+                                    return 1
+                                fi
+                            done
+                        fi
+                    done
+                }
+
+                cleanup_wait_for_app() {
+                    local ticks=0 started=$SECONDS
+                    while [ "$ticks" -lt 25 ] && [ "$((SECONDS - started))" -lt 5 ]; do
+                        cleanup_find_processes || return 2
+                        [ "${#cleanup_matches[@]}" -ne 0 ] || return 0
+                        cleanup_pause
+                        ticks=$((ticks + 1))
+                    done
+                    return 1
+                }
+
+                cleanup_stop_app() {
+                    local status
+                    cleanup_find_processes || return 1
+                    if [ "${#cleanup_matches[@]}" -gt 0 ]; then
+                        cleanup_signal_matches TERM || return 1
+                        status=0; cleanup_wait_for_app || status=$?
+                        [ "$status" != 2 ] || return 1
+                        if [ "$status" != 0 ]; then
+                            cleanup_signal_matches KILL || return 1
+                            cleanup_wait_for_app || {
+                                step_log ERROR "App processes remain after KILL: ${cleanup_matches[*]:-}"
+                                return 1
+                            }
+                        fi
+                    fi
+                    cleanup_pause
+                    cleanup_find_processes || return 1
+                    [ "${#cleanup_matches[@]}" = 0 ] || { step_log ERROR 'The app respawned; cleanup stopped.'; return 1; }
+                    step_log PASS 'No target app processes remain.'
+                }
+
+                # Return 0 loaded, 1 explicitly absent, 2 inspection failed. launchctl's other failures
+                # (including a deadline or a permission error) cannot establish that a service is absent.
+                cleanup_job_state() {
+                    local output status=0
+                    output=$(bounded_command 5 inspect-service /bin/launchctl print "system/$1" 2>&1) || status=$?
+                    [ "$status" != 0 ] || return 0
+                    if [ "$status" = 113 ] && [[ "$output" == *"Could not find service \"$1\" in domain for system"* ]]; then
+                        return 1
+                    fi
+                    step_log ERROR "Cannot inspect service $1: $output"
+                    return 2
+                }
+
+                cleanup_privileged() {
+                    if [ "$(/usr/bin/id -u)" = 0 ]; then
+                        bounded_command 10 remove-provider "$@"
+                    else
+                        # Only the existing removal grant is used. Never prompt or create a new grant here.
+                        bounded_command 10 remove-provider /usr/bin/sudo -n "$@"
+                    fi
+                }
+
+                cleanup_unload_job() {
+                    local label=$1 state=0 ticks=0 started=$SECONDS
+                    cleanup_job_state "$label" || state=$?
+                    [ "$state" != 2 ] || return 1
+                    [ "$state" = 0 ] || return 0
+                    cleanup_privileged /bin/launchctl bootout "system/$label" || true
+                    while [ "$ticks" -lt 100 ] && [ "$((SECONDS - started))" -lt 20 ]; do
+                        state=0; cleanup_job_state "$label" || state=$?
+                        [ "$state" != 1 ] || return 0
+                        [ "$state" != 2 ] || return 1
+                        cleanup_pause
+                        ticks=$((ticks + 1))
+                    done
+                    step_log ERROR "Provider service $label remains loaded."
+                    return 1
+                }
+
+                cleanup_workers_absent() {
+                    local table pid command
+                    table=$(cleanup_command_table) || return 2
+                    [ -n "$table" ] || return 2
+                    while read -r pid command; do
+                        case "$command" in
+                            "/bin/bash $cleanup_support/tailscale-verge.sh monitor"*|"/bin/bash $cleanup_support/tailscale-verge.sh http"*)
+                                step_log WAIT "Provider worker $pid is still exiting."
+                                return 1 ;;
+                        esac
+                    done <<< "$table"
+                }
+
+                cleanup_remove_provider() {
+                    local path state ticks=0 started
+                    cleanup_unload_job "$cleanup_label-http" && cleanup_unload_job "$cleanup_label" || return 1
+                    started=$SECONDS
+                    while true; do
+                        state=0; cleanup_workers_absent || state=$?
+                        [ "$state" != 2 ] || { step_log ERROR 'Cannot inspect provider workers.'; return 1; }
+                        [ "$state" != 0 ] || break
+                        [ "$ticks" -lt 50 ] && [ "$((SECONDS - started))" -lt 10 ] || {
+                            step_log ERROR 'Provider workers did not exit.'; return 1;
+                        }
+                        cleanup_pause
+                        ticks=$((ticks + 1))
+                    done
+                    for path in "$cleanup_http_plist" "$cleanup_plist"; do
+                        if cleanup_exists "$path"; then cleanup_privileged /bin/rm -f "$path" || return 1; fi
+                    done
+                    if cleanup_exists "$cleanup_support"; then
+                        cleanup_privileged /bin/rm -rf "$cleanup_support" || return 1
+                    fi
+                    for path in "$cleanup_http_plist" "$cleanup_plist" "$cleanup_support"; do
+                        if cleanup_exists "$path"; then step_log ERROR "Provider component remains: $path"; return 1; fi
+                    done
+                    # Verify again before deleting the grant, while recovery is still possible.
+                    for path in "$cleanup_label-http" "$cleanup_label"; do
+                        state=0; cleanup_job_state "$path" || state=$?
+                        [ "$state" = 1 ] || { step_log ERROR "Provider service removal not verified: $path"; return 1; }
+                    done
+                    cleanup_workers_absent || return 1
+                    if cleanup_exists "$cleanup_grant"; then cleanup_privileged /bin/rm -f "$cleanup_grant" || return 1; fi
+                    if cleanup_exists "$cleanup_grant"; then step_log ERROR 'Removal grant remains.'; return 1; fi
+                    step_log PASS 'Both provider services, workers, files and removal grant are absent.'
+                }
+
+                cleanup_main() (
+                    set -uo pipefail
+                    cleanup_app=""
+                    while [ "$#" -gt 0 ]; do
+                        case "$1" in
+                            --app) [ "$#" -ge 2 ] || return 2; cleanup_app=$2; shift 2 ;;
+                            --help|-h) sed -n '2,6p' "${BASH_SOURCE[0]}"; return 0 ;;
+                            *) echo "Unknown argument: $1" >&2; return 2 ;;
+                        esac
+                    done
+                    case "$cleanup_app" in /*/ExitIPMonitor.app) ;; *) echo 'Use --app with an absolute ExitIPMonitor.app path.' >&2; return 2 ;; esac
+                    # Retain the lexical absolute path if an old uninstaller already removed the bundle.
+                    if [ -d "$cleanup_app" ]; then cleanup_app=$(cd "$cleanup_app" && pwd -P) || return 1; fi
+                    cleanup_uid=$(/usr/bin/id -u)
+                    if [ "$cleanup_uid" = 0 ]; then cleanup_uid=$(/usr/bin/stat -f %u /dev/console) || return 1; fi
+                    cleanup_translocations=""; cleanup_matches=()
+                    cleanup_label=com.example.exitipmonitor.tailscale-verge
+                    cleanup_plist="/Library/LaunchDaemons/$cleanup_label.plist"
+                    cleanup_http_plist="/Library/LaunchDaemons/$cleanup_label-http.plist"
+                    cleanup_support='/Library/Application Support/ExitIPMonitor'
+                    cleanup_grant=/etc/sudoers.d/exitipmonitor-tailscale-verge
+                    step_log BEGIN "Clean uninstall preparation: $cleanup_app"
+                    cleanup_stop_app || return 1
+                    cleanup_remove_provider || {
+                        step_log ERROR "Provider cleanup failed; the app must not be removed or replaced. Use the existing daemon.sh remove command with administrator authentication, then retry."
+                        return 1
+                    }
+                    # A launch request during service teardown must not escape the final check.
+                    cleanup_find_processes || return 1
+                    [ "${#cleanup_matches[@]}" = 0 ] || { step_log ERROR 'App restarted during cleanup; retry before replacement.'; return 1; }
+                    step_log PASS 'Clean uninstall preparation complete; the app can now be removed.'
+                )
+
+                if [[ "${BASH_SOURCE[0]:-}" = "$0" ]]; then cleanup_main "$@"; exit $?; fi
+
+                cleanup_main --app "$1"
+                # END GENERATED CLEANUP
               SH
             }
 
   # Settings, the last result, runtime logs, the generated Clash Verge profile, and the daemon's
   # opt-out marker. Builds before 1.0's final upload ran sandboxed, so their containers are
   # removed too. The grant is normally gone already (uninstall deletes it last).
-  zap delete: "/etc/sudoers.d/exitipmonitor-tailscale-verge",
-      trash:  [
-        "~/Library/Application Support/ExitIPMonitor",
-        "~/Library/Containers/com.example.exitipmonitor",
-        "~/Library/Containers/com.example.exitipmonitor.widgets",
-        "~/Library/Group Containers/group.com.example.exitipmonitor",
-        "~/Library/Preferences/com.example.exitipmonitor.plist",
-        "~/Library/Preferences/group.com.example.exitipmonitor.plist",
-      ]
+  zap trash: [
+    "~/Library/Application Support/ExitIPMonitor",
+    "~/Library/Containers/com.example.exitipmonitor",
+    "~/Library/Containers/com.example.exitipmonitor.widgets",
+    "~/Library/Group Containers/group.com.example.exitipmonitor",
+    "~/Library/Preferences/com.example.exitipmonitor.plist",
+    "~/Library/Preferences/group.com.example.exitipmonitor.plist",
+  ]
 
   caveats <<~EOS
     Exit IP Monitor is ad-hoc signed (not notarized). Launch it, then try
@@ -91,29 +333,30 @@ cask "exit-ip-monitor" do
     directly as a normal window. The Dock icon appears while the dashboard
     is open or minimized and disappears when it closes; monitoring continues.
 
-    Build 1.0 (6) adds external launch tracing. Start it before macOS approval
+    Build 1.0 (8) loads Keychain credentials only on explicit Load, Save, or Remove.
+    Start external launch tracing before macOS approval
     to capture authentication even when the app cannot start:
       /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --trace --launch --timeout 180
     This checks the main-thread heartbeat and installed build, including a
     verified App Translocation copy. It does not change quarantine or security
     settings. It prints a local summary and reports missing evidence; trace
-    collectors stop on success, failure, timeout, and cancellation. Build 6 adds
-    diagnostics and does not claim to fix the intermittent approval stall.
+    collectors stop on success, failure, timeout, and cancellation. Build 8 does
+    not claim to fix the separate macOS pre-entry approval stall.
     App and launch logs: ~/Library/Application Support/ExitIPMonitor/Logs
     Daemon setup logs: /Library/Logs/ExitIPMonitor
     Details: https://github.com/jxz345/exit-ip-widget#launch-diagnostics
 
-    If daemon setup was skipped or failed, the dashboard keeps the Clash Verge
-    sections visible and offers Install Provider with native macOS authentication,
-    progress, errors, and retry. Only one copy of Exit IP Monitor can run at a time.
+    Install and reinstall leave the optional provider uninstalled. Exit IP
+    monitoring works without it. To enable Tailscale routing in Clash Verge,
+    click Install Provider in the dashboard; only then does setup request
+    administrator authentication. Cancellation and failure leave the app usable.
 
-    Installing asks for your administrator password once, to set up the
-    Tailscale → Clash Verge provider daemon (http://127.0.0.1:18766). It is
-    useful only with Tailscale and Clash Verge Rev; without them it serves
-    Reject and the dashboard says what's missing. Uninstall removes it without
-    a password. Turn it off (reinstalls respect that) or back on with:
-      sudo /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/daemon.sh" remove
-      sudo /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/daemon.sh" install
-    Details: https://github.com/jxz345/exit-ip-widget#tailscale--clash-verge-provider-root-daemon
+    Uninstall stops this app, including a hung process, and removes both provider
+    services through the existing removal grant. Cleanup failure stops removal.
+    Reinstall performs that cleanup first, then installs only the app. Settings,
+    credentials, and logs are retained unless you explicitly use --zap.
+    Old installed casks retain their old uninstall instructions; see the clean
+    reinstall migration instructions before removing a stalled older build.
+    Details: https://github.com/jxz345/exit-ip-widget#clean-uninstall-and-reinstall
   EOS
 end
