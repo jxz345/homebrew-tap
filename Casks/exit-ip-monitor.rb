@@ -21,6 +21,16 @@ cask "exit-ip-monitor" do
 
   app "ExitIPMonitor.app"
 
+  # Ad-hoc signed, not notarized. A quarantined copy needs Gatekeeper's Open Anyway, which
+  # macOS 27 can cancel itself (Use Password), holding the app before startup until the next
+  # screen unlock or restart. Before the app is moved into place, verify its sealed signature
+  # and remove only its download quarantine (Sleepless's app-scoped recovery, applied before
+  # the first launch). See https://github.com/jxz345/exit-ip-widget#first-launch
+  preflight_steps do
+    run "/usr/bin/codesign", args: ["--verify", "--deep", "--strict", "{{staged_path}}/ExitIPMonitor.app"]
+    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}/ExitIPMonitor.app"]
+  end
+
   # App-only install. Optional privileged setup happens in the dashboard.
   # The inline helper also supports installed releases without cleanup-installation.sh.
   # Keep in sync with Scripts/sync-homebrew-cleanup.py in exit-ip-widget.
@@ -327,24 +337,23 @@ cask "exit-ip-monitor" do
   ]
 
   caveats <<~EOS
-    Exit IP Monitor is ad-hoc signed (not notarized). Launch it, then try
-    System Settings > Privacy & Security > "Open Anyway" if macOS blocks it.
+    Exit IP Monitor is ad-hoc signed (not notarized). Before moving it into
+    place, this cask verifies its signature and removes the download
+    quarantine from this app only, so the first launch needs no Open Anyway.
     The country flag stays in the menu bar. Click it to open the dashboard
     directly as a normal window. The Dock icon appears while the dashboard
     is open or minimized and disappears when it closes; monitoring continues.
 
+    If an earlier Open Anyway attempt left the app waiting before startup,
+    lock the screen (Control-Command-Q) and unlock it; macOS then finishes
+    that approval and the app starts. (Use Password in that dialog can leave
+    the approval waiting; Touch ID completes it.) A restart also works.
+    Check a launch:
+      /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --launch
     Build 1.0 (8) loads Keychain credentials only on explicit Load, Save, or Remove.
-    Start external launch tracing before macOS approval
-    to capture authentication even when the app cannot start:
-      /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --trace --launch --timeout 180
-    This checks the main-thread heartbeat and installed build, including a
-    verified App Translocation copy. It does not change quarantine or security
-    settings. It prints a local summary and reports missing evidence; trace
-    collectors stop on success, failure, timeout, and cancellation. Build 8 does
-    not claim to fix the separate macOS pre-entry approval stall.
     App and launch logs: ~/Library/Application Support/ExitIPMonitor/Logs
     Daemon setup logs: /Library/Logs/ExitIPMonitor
-    Details: https://github.com/jxz345/exit-ip-widget#launch-diagnostics
+    Details: https://github.com/jxz345/exit-ip-widget#first-launch
 
     Install and reinstall leave the optional provider uninstalled. Exit IP
     monitoring works without it. To enable Tailscale routing in Clash Verge,
