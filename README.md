@@ -55,6 +55,11 @@ diagnostics under `~/Library/Application Support/ExitIPMonitor/Logs`; daemon set
 `/Library/Logs/ExitIPMonitor`. Quarantine and macOS security settings remain intact. See
 [launch diagnostics](https://github.com/jxz345/exit-ip-widget#launch-diagnostics).
 
+Build 1.0 (4) keeps the Clash Verge profile and provider sections visible even when daemon
+setup was skipped or failed. Click **Install Provider** in the dashboard and complete native
+macOS administrator authentication; progress, cancellation, errors, and retry stay visible.
+Only one app instance runs at a time, including development copies.
+
 ```sh
 brew uninstall --cask jxz345/tap/exit-ip-monitor          # quits and removes the app
 brew uninstall --zap --cask jxz345/tap/exit-ip-monitor    # also removes settings and logs

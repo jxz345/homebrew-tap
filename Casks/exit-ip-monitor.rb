@@ -5,7 +5,7 @@
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
   version "1.0"
-  sha256 "16a3fcc09ba8a0c6bfac8e5daaa8b4e802617daae4a543a0a111630ef72e7149"
+  sha256 "5ab89a3da32780db0dc36f88ccf41e9b7a319049ce146c7c745de1bb08a40811"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
@@ -99,6 +99,10 @@ cask "exit-ip-monitor" do
     App and launch logs: ~/Library/Application Support/ExitIPMonitor/Logs
     Daemon setup logs: /Library/Logs/ExitIPMonitor
     Details: https://github.com/jxz345/exit-ip-widget#launch-diagnostics
+
+    If daemon setup was skipped or failed, the dashboard keeps the Clash Verge
+    sections visible and offers Install Provider with native macOS authentication,
+    progress, errors, and retry. Only one copy of Exit IP Monitor can run at a time.
 
     Installing asks for your administrator password once, to set up the
     Tailscale → Clash Verge provider daemon (http://127.0.0.1:18766). It is
