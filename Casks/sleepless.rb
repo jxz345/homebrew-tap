@@ -20,6 +20,16 @@ cask "sleepless" do
 
   app "Sleepless.app"
 
+  # Ad-hoc signed, not notarized. A quarantined copy needs Gatekeeper's Open Anyway, which
+  # macOS 27 can cancel itself (Use Password), holding the app before startup until the next
+  # screen unlock or restart. Before the app is moved into place, verify its sealed signature
+  # and remove only its download quarantine (the app-scoped recovery, applied before the first
+  # launch). See https://github.com/jxz345/exit-ip-widget#first-launch
+  preflight_steps do
+    run "/usr/bin/codesign", args: ["--verify", "--deep", "--strict", "{{staged_path}}/Sleepless.app"]
+    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}/Sleepless.app"]
+  end
+
   # One administrator prompt at install and upgrade sets up the permission grant and the
   # background service. Apple's /bin/bash runs the bundled scripts (the same way the app's own
   # setup does), so nothing in the freshly installed bundle is executed directly; both scripts
@@ -86,18 +96,14 @@ cask "sleepless" do
     This is the jxz345 fork of Sleepless. Do not install it alongside
     aboudjem/tap/sleepless: both install #{appdir}/Sleepless.app.
 
-    Sleepless is ad-hoc signed (not notarized). Launch it, then try
-    System Settings > Privacy & Security > "Open Anyway" if macOS blocks it.
+    Sleepless is ad-hoc signed (not notarized). Before moving it into place,
+    this cask verifies its signature and removes the download quarantine from
+    this app only, so the first launch needs no Open Anyway.
 
-    If launch hangs or "Open Anyway" is absent or ineffective, quit the stalled
-    app. After verifying the download, explicitly remove quarantine for this app:
-      codesign --verify --deep --strict --verbose=2 "#{appdir}/Sleepless.app"
-      xattr -dr com.apple.quarantine "#{appdir}/Sleepless.app"
-      open "#{appdir}/Sleepless.app"
-    If xattr reports "Operation not permitted", allow the terminal's host app
-    under Privacy & Security > App Management, then retry.
-    Recovery details and checks:
-      https://github.com/jxz345/Sleepless/blob/main/UPDATE_NOTES.md#8-installation-recovery-on-macos-27-2026-10-07
+    If an earlier Open Anyway attempt left the app waiting before startup,
+    lock the screen (Control-Command-Q) and unlock it; macOS then finishes
+    that approval and the app starts. (Use Password in that dialog can leave
+    the approval waiting; Touch ID completes it.) A restart also works.
 
     Installing asks for your administrator password once, to set up the
     permission grant and the background service. The service opens Sleepless
