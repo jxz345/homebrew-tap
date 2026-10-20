@@ -5,7 +5,7 @@
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
   version "2.0"
-  sha256 "31fb154c5624cb1178f5a87dd1ed78a00be6e322b575d60bfaedb8d28b987c78"
+  sha256 "d379d9c80d36886ad4e8fbe35ab0badbcc5aa265df602f86a9c9feab98c3304b"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
