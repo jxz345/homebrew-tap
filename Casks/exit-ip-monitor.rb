@@ -4,8 +4,8 @@
 # from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
-  version "1.0"
-  sha256 "d089c99e6f9036b5b843b85f31e4a1d9b793ef25b6c14f849f50d3e9dcb899c6"
+  version "2.0"
+  sha256 "31fb154c5624cb1178f5a87dd1ed78a00be6e322b575d60bfaedb8d28b987c78"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
@@ -31,7 +31,21 @@ cask "exit-ip-monitor" do
     run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}/ExitIPMonitor.app"]
   end
 
-  # App-only install. Optional privileged setup happens in the dashboard.
+  # Sets up the Tailscale → Clash Verge provider with one password prompt, as Sleepless sets up
+  # its service. Skipped while the user has turned it off (`daemon.sh remove`). A busy port or
+  # a cancelled password must not fail the app install; the dashboard then offers Install Provider.
+  # Apple's /bin/bash runs the bundled script, which takes the user from SUDO_USER.
+  postflight_steps do
+    unless_path_exists "Library/Application Support/ExitIPMonitor/tailscale-verge-off", base: :home do
+      run "/bin/bash",
+          args:         ["{{appdir}}/ExitIPMonitor.app/Contents/Resources/daemon.sh", "install"],
+          sudo:         true,
+          must_succeed: false,
+          print_stdout: true
+    end
+  end
+
+  # Uninstall stops the app and removes the provider through its removal grant (no password).
   # The inline helper also supports installed releases without cleanup-installation.sh.
   # Keep in sync with Scripts/sync-homebrew-cleanup.py in exit-ip-widget.
   uninstall quit:   "com.example.exitipmonitor",
@@ -350,20 +364,26 @@ cask "exit-ip-monitor" do
     the approval waiting; Touch ID completes it.) A restart also works.
     Check a launch:
       /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --launch
-    Build 1.0 (8) loads Keychain credentials only on explicit Load, Save, or Remove.
+    The dashboard reads your proxy info from the Keychain once when it opens;
+    the IPinfo token is read only when you load or save it. Command-Q closes
+    the windows and keeps the app in the menu bar; quit from the dashboard.
     App and launch logs: ~/Library/Application Support/ExitIPMonitor/Logs
     Daemon setup logs: /Library/Logs/ExitIPMonitor
     Details: https://github.com/jxz345/exit-ip-widget#first-launch
 
-    Install and reinstall leave the optional provider uninstalled. Exit IP
-    monitoring works without it. To enable Tailscale routing in Clash Verge,
-    click Install Provider in the dashboard; only then does setup request
-    administrator authentication. Cancellation and failure leave the app usable.
+    Install, upgrade and reinstall ask for your password once, to set up the
+    Tailscale → Clash Verge provider (a LaunchDaemon that survives restarts).
+    Missing Tailscale or Clash Verge is fine: it serves Reject and the dashboard
+    says what's missing. A cancelled password or failed setup leaves the app
+    installed and monitoring; click Install Provider in the dashboard later.
+    Turn the provider off (it then stays off across reinstalls):
+      sudo /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/daemon.sh" remove
 
     Uninstall stops this app, including a hung process, and removes both provider
-    services through the existing removal grant. Cleanup failure stops removal.
-    Reinstall performs that cleanup first, then installs only the app. Settings,
-    credentials, and logs are retained unless you explicitly use --zap.
+    services through the removal grant, without a password. Cleanup failure stops
+    removal. Reinstall performs that cleanup first, then installs the app and sets
+    the provider up again. Settings, credentials, and logs are retained unless you
+    explicitly use --zap.
     Old installed casks retain their old uninstall instructions; see the clean
     reinstall migration instructions before removing a stalled older build.
     Details: https://github.com/jxz345/exit-ip-widget#clean-uninstall-and-reinstall
