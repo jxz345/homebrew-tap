@@ -4,8 +4,8 @@
 # from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
-  version "2.0"
-  sha256 "d379d9c80d36886ad4e8fbe35ab0badbcc5aa265df602f86a9c9feab98c3304b"
+  version "2.1"
+  sha256 "423329583bb7b1f605899d2378caa02569b39a19524b3052f8d5137c56a68d3e"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
