@@ -4,8 +4,8 @@
 # from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
 # https://github.com/jxz345/exit-ip-widget#first-launch
 cask "exit-ip-monitor" do
-  version "2.2"
-  sha256 "98ffa84a94013aa8eb7fffeda08fea73b63e52ad9835eb9c069bcae1feb2632a"
+  version "3.0"
+  sha256 "d0d85400eb6f9a93b8c200759a5cb4933cdf47c8adc4078b9d3423310c84c462"
 
   url "https://github.com/jxz345/exit-ip-widget/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Exit IP Monitor"
@@ -31,21 +31,17 @@ cask "exit-ip-monitor" do
     run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}/ExitIPMonitor.app"]
   end
 
-  # Sets up the Tailscale → Clash Verge provider with one password prompt, as Sleepless sets up
-  # its service. Skipped while the user has turned it off (`daemon.sh remove`). A busy port or
-  # a cancelled password must not fail the app install; the dashboard then offers Install Provider.
-  # Apple's /bin/bash runs the bundled script, which takes the user from SUDO_USER.
+  # One machine-wide service is required for monitoring. Failed/cancelled authentication leaves
+  # the app installed with an Install Service action; optional Tailscale enablement is separate.
   postflight_steps do
-    unless_path_exists "Library/Application Support/ExitIPMonitor/tailscale-verge-off", base: :home do
-      run "/bin/bash",
-          args:         ["{{appdir}}/ExitIPMonitor.app/Contents/Resources/daemon.sh", "install"],
-          sudo:         true,
-          must_succeed: false,
-          print_stdout: true
-    end
+    run "/bin/bash",
+        args:         ["{{appdir}}/ExitIPMonitor.app/Contents/Resources/daemon.sh", "install"],
+        sudo:         true,
+        must_succeed: false,
+        print_stdout: true
   end
 
-  # Uninstall stops the app and removes the provider through its removal grant (no password).
+  # Uninstall stops every installed client and the service through its removal grant (no password).
   # The inline helper also supports installed releases without cleanup-installation.sh.
   # Keep in sync with Scripts/sync-homebrew-cleanup.py in exit-ip-widget.
   uninstall quit:   "com.example.exitipmonitor",
@@ -148,7 +144,7 @@ cask "exit-ip-monitor" do
                                 *) continue ;;
                             esac
                         fi
-                        [ "$uid" = "$cleanup_uid" ] || {
+                        [ "$uid" = "$cleanup_uid" ] || [ "$cleanup_uid" = 0 ] || {
                             step_log ERROR "Target app process $pid belongs to user $uid; it was not signalled."
                             return 1
                         }
@@ -226,12 +222,25 @@ cask "exit-ip-monitor" do
                 }
 
                 cleanup_privileged() {
+                    local timeout=10
+                    [ "$1" != /Library/PrivilegedHelperTools/com.example.exitipmonitor.manage ] || timeout=90
                     if [ "$(/usr/bin/id -u)" = 0 ]; then
-                        bounded_command 10 remove-provider "$@"
+                        bounded_command "$timeout" remove-provider "$@"
                     else
                         # Only the existing removal grant is used. Never prompt or create a new grant here.
-                        bounded_command 10 remove-provider /usr/bin/sudo -n "$@"
+                        bounded_command "$timeout" remove-provider /usr/bin/sudo -n "$@"
                     fi
+                }
+
+                cleanup_remember_provider() {
+                    local marker
+                    if [ "$cleanup_uid" = 0 ]; then
+                        marker=/Library/Preferences/com.example.exitipmonitor.legacy-provider-enabled
+                    else
+                        marker="$HOME/Library/Application Support/ExitIPMonitor/legacy-provider-enabled"
+                        /bin/mkdir -p "$(dirname "$marker")" || return 1
+                    fi
+                    /usr/bin/touch "$marker"
                 }
 
                 cleanup_unload_job() {
@@ -312,7 +321,6 @@ cask "exit-ip-monitor" do
                     # Retain the lexical absolute path if an old uninstaller already removed the bundle.
                     if [ -d "$cleanup_app" ]; then cleanup_app=$(cd "$cleanup_app" && pwd -P) || return 1; fi
                     cleanup_uid=$(/usr/bin/id -u)
-                    if [ "$cleanup_uid" = 0 ]; then cleanup_uid=$(/usr/bin/stat -f %u /dev/console) || return 1; fi
                     cleanup_translocations=""; cleanup_matches=()
                     cleanup_label=com.example.exitipmonitor.tailscale-verge
                     cleanup_plist="/Library/LaunchDaemons/$cleanup_label.plist"
@@ -320,7 +328,30 @@ cask "exit-ip-monitor" do
                     cleanup_support='/Library/Application Support/ExitIPMonitor'
                     cleanup_grant=/etc/sudoers.d/exitipmonitor-tailscale-verge
                     step_log BEGIN "Clean uninstall preparation: $cleanup_app"
+                    local manager=/Library/PrivilegedHelperTools/com.example.exitipmonitor.manage
+                    if [ -f "$manager" ]; then
+                        # The installed root-owned manager covers every user and preserves machine data.
+                        cleanup_privileged "$manager" uninstall || {
+                            step_log ERROR "Service cleanup failed. Run sudo '$manager' uninstall, then retry."
+                            return 1
+                        }
+                        cleanup_stop_app || return 1
+                        step_log PASS 'Machine service and all installed clients stopped; shared data retained.'
+                        return 0
+                    fi
+                    if [ -d "$cleanup_support/Service" ]; then
+                        local service=com.example.exitipmonitor.daemon state=0
+                        cleanup_job_state "$service" || state=$?
+                        if [ "$state" = 1 ] && [ ! -e "/Library/PrivilegedHelperTools/$service" ] && [ ! -e "/Library/LaunchDaemons/$service.plist" ]; then
+                            cleanup_stop_app || return 1
+                            step_log PASS 'Service already removed; retained machine data is ready for reinstall.'
+                            return 0
+                        fi
+                        step_log ERROR 'Service manager is missing but installed components remain. Repair the service before uninstalling; shared data was retained.'
+                        return 1
+                    fi
                     cleanup_stop_app || return 1
+                    if cleanup_exists "$cleanup_plist" || cleanup_exists "$cleanup_http_plist"; then cleanup_remember_provider || return 1; fi
                     cleanup_remove_provider || {
                         step_log ERROR "Provider cleanup failed; the app must not be removed or replaced. Use the existing daemon.sh remove command with administrator authentication, then retry."
                         return 1
@@ -338,9 +369,8 @@ cask "exit-ip-monitor" do
               SH
             }
 
-  # Settings, the last result, runtime logs, the generated Clash Verge profile, and the daemon's
-  # opt-out marker. Builds before 1.0's final upload ran sandboxed, so their containers are
-  # removed too. The grant is normally gone already (uninstall deletes it last).
+  # Zap removes this account's preferences, profile files and logs. Machine state and
+  # System Keychain credentials remain. Retire containers from earlier sandboxed releases too.
   zap trash: [
     "~/Library/Application Support/ExitIPMonitor",
     "~/Library/Containers/com.example.exitipmonitor",
@@ -365,25 +395,29 @@ cask "exit-ip-monitor" do
     Check a launch:
       /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --launch
     The dashboard reads your proxy info from the Keychain once when it opens;
-    the IPinfo token is read only when you load or save it. Command-Q closes
-    the windows and keeps the app in the menu bar; quit from the dashboard.
+    shared IPinfo token is loaded by the background service from the System
+    Keychain. Command-Q closes windows; Quit closes only your menu-bar app.
     App and launch logs: ~/Library/Application Support/ExitIPMonitor/Logs
     Daemon setup logs: /Library/Logs/ExitIPMonitor
     Details: https://github.com/jxz345/exit-ip-widget#first-launch
 
-    Install, upgrade and reinstall ask for your password once, to set up the
-    Tailscale → Clash Verge provider (a LaunchDaemon that survives restarts).
-    Missing Tailscale or Clash Verge is fine: it serves Reject and the dashboard
-    says what's missing. A cancelled password or failed setup leaves the app
-    installed and monitoring; click Install Provider in the dashboard later.
-    Turn the provider off (it then stays off across reinstalls):
-      sudo /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/daemon.sh" remove
+    Install, upgrade and reinstall request administrator authentication for
+    one shared service, which starts at boot and continues after logout or
+    when every menu-bar app quits. Each user can open an independent UI.
+    If setup is cancelled or fails, monitoring waits until Install Service
+    or Repair Service succeeds in the dashboard.
 
-    Uninstall stops this app, including a hung process, and removes both provider
-    services through the removal grant, without a password. Cleanup failure stops
-    removal. Reinstall performs that cleanup first, then installs the app and sets
-    the provider up again. Settings, credentials, and logs are retained unless you
-    explicitly use --zap.
+    On first setup, choose Use This Account's Settings under Shared background
+    monitoring. Import a previously saved IPinfo token separately in Settings.
+    Shared monitoring settings require administrator authentication; appearance,
+    dismissals, login items and proxy profiles remain personal.
+
+    Tailscale integration is an optional dashboard toggle in the same service.
+    The old provider opt-out marker does not disable the required service.
+    Uninstall stops installed clients and the service through its removal grant.
+    Cleanup failure stops removal. Reinstall retains shared settings, quotas,
+    credentials and personal data. Zap removes only the current account's data;
+    machine state and System Keychain credentials are retained.
     Old installed casks retain their old uninstall instructions; see the clean
     reinstall migration instructions before removing a stalled older build.
     Details: https://github.com/jxz345/exit-ip-widget#clean-uninstall-and-reinstall
