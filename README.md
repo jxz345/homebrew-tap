@@ -2,7 +2,7 @@
 
 A [Homebrew](https://brew.sh) tap for [jxz345/Sleepless](https://github.com/jxz345/Sleepless), a fork of
 [Aboudjem/Sleepless](https://github.com/Aboudjem/Sleepless) (this tap is forked from
-[Aboudjem/homebrew-tap](https://github.com/Aboudjem/homebrew-tap)), and for
+[Aboudjem/homebrew-tap](https://github.com/Aboudjem/homebrew-tap)), and for [Mimo](https://github.com/jxz345/mimo) and the legacy
 [Exit IP Monitor](https://github.com/jxz345/exit-ip-widget).
 
 ## Install
@@ -91,8 +91,6 @@ brew uninstall --zap --cask jxz345/tap/exit-ip-monitor    # also removes setting
 [Mimo](https://github.com/jxz345/mimo) supports Apple silicon Macs with macOS 14 or later and IPv4 traffic.
 
 ```sh
-brew tap jxz345/tap
-brew trust --cask jxz345/tap/mimo
 brew trust --formula jxz345/tap/mihomo@1.19.34
 brew install --cask jxz345/tap/mimo
 open /Applications/Mimo.app
@@ -103,7 +101,7 @@ Direct uses unproxied IPv4; Rule and Global require a configured proxy and a fre
 Mimo's machine-wide services continue running when the GUI quits. See the [release notes](https://github.com/jxz345/mimo/releases/tag/v1.0)
 for measured behavior and known protection limits. The app is ad-hoc signed, not notarized; the cask verifies its sealed signature before removing this app's quarantine.
 
-To replace the earlier 1.0 preview, refresh both the tap and its cached download:
+To replace an earlier 1.0 build, refresh the repository and cached download:
 
 ```sh
 brew update
@@ -112,8 +110,9 @@ brew reinstall --cask jxz345/tap/mimo
 ```
 The installed app is now **Mimo.app**. The legacy `jxz345/tap/exit-ip-monitor` cask must be uninstalled first because the services conflict.
 
-Uninstall with `brew uninstall --cask jxz345/tap/mimo`. This stops Mimo-owned services, removes the staged engine and generated runtime profiles,
-restores saved IPv6 flags and retains settings/Keychain credentials. Homebrew removes unused mihomo dependencies; explicitly installed mihomo is retained.
+Uninstall with `brew uninstall --cask jxz345/tap/mimo`. This removes Mimo-owned services, PF/boot policy, login registrations, generated profiles/caches and cleanup helpers, and restores networking. Saved settings, Keychain credentials and logs remain. Homebrew removes unused mihomo dependencies; explicitly installed mihomo is retained. Deleting Mimo.app alone leaves services and firewall rules installed; the same Homebrew uninstall command still works afterward.
+
+Current app, service and archive names use Mimo. Existing settings and credentials migrate from the former identity. The standalone removal command is `sudo /Library/PrivilegedHelperTools/mimo-manage uninstall`. The dashboard also displays the Homebrew uninstall command. No separate `brew tap` step is needed.
 
 ## Casks
 

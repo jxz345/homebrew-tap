@@ -5,9 +5,9 @@
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
   version "1.0"
-  sha256 "f49b18d899bb9c7c9b0731ba7f63f0f86d468340cf62f61131e4a4ad7ccca4ef"
+  sha256 "7782f91ebb5249712ef02c742dc7db4d70449cb6c5846cfcb3123877534f1f76"
 
-  url "https://github.com/jxz345/mimo/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
+  url "https://github.com/jxz345/mimo/releases/download/v#{version}/Mimo-#{version}.zip"
   name "Mimo"
   desc "IPv4 proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
@@ -42,8 +42,8 @@ cask "mimo" do
 
   # Uninstall removes owned services/PF/runtime and per-user login items through its fixed removal grant.
   # The inline helper also supports installed releases without cleanup-installation.sh.
-  # Keep in sync with Scripts/sync-homebrew-cleanup.py in exit-ip-widget.
-  uninstall quit:   "com.example.exitipmonitor",
+  # Keep in sync with Scripts/sync-homebrew-cleanup.py in mimo.
+  uninstall quit:   "com.mimo",
             script: {
               executable:   "/bin/bash",
               must_succeed: true,
@@ -222,7 +222,7 @@ cask "mimo" do
 
                 cleanup_privileged() {
                     local timeout=10
-                    [ "$1" != /Library/PrivilegedHelperTools/com.example.exitipmonitor.manage ] || timeout=90
+                    case "$1" in /Library/PrivilegedHelperTools/mimo-manage|/Library/PrivilegedHelperTools/com.example.exitipmonitor.manage) timeout=90 ;; esac
                     if [ "$(/usr/bin/id -u)" = 0 ]; then
                         bounded_command "$timeout" remove-provider "$@"
                     else
@@ -234,9 +234,9 @@ cask "mimo" do
                 cleanup_remember_provider() {
                     local marker
                     if [ "$cleanup_uid" = 0 ]; then
-                        marker=/Library/Preferences/com.example.exitipmonitor.legacy-provider-enabled
+                        marker=/Library/Preferences/com.mimo.legacy-provider-enabled
                     else
-                        marker="$HOME/Library/Application Support/ExitIPMonitor/legacy-provider-enabled"
+                        marker="$HOME/Library/Application Support/Mimo/legacy-provider-enabled"
                         /bin/mkdir -p "$(dirname "$marker")" || return 1
                     fi
                     /usr/bin/touch "$marker"
@@ -327,7 +327,10 @@ cask "mimo" do
                     cleanup_support='/Library/Application Support/ExitIPMonitor'
                     cleanup_grant=/etc/sudoers.d/exitipmonitor-tailscale-verge
                     step_log BEGIN "Clean uninstall preparation: $cleanup_app"
-                    local manager=/Library/PrivilegedHelperTools/com.example.exitipmonitor.manage
+                    local manager=/Library/PrivilegedHelperTools/mimo-manage
+                    if [ ! -f "$manager" ] && [ -f /Library/PrivilegedHelperTools/com.example.exitipmonitor.manage ]; then
+                        manager=/Library/PrivilegedHelperTools/com.example.exitipmonitor.manage
+                    fi
                     if [ -f "$manager" ]; then
                         # The installed root-owned manager covers every user and preserves machine data.
                         cleanup_privileged "$manager" uninstall || {
@@ -338,16 +341,22 @@ cask "mimo" do
                         step_log PASS 'Machine service and all installed clients stopped; shared data retained.'
                         return 0
                     fi
-                    if [ -d "$cleanup_support/Service" ]; then
-                        local service=com.example.exitipmonitor.daemon state=0
-                        cleanup_job_state "$service" || state=$?
-                        if [ "$state" = 1 ] && [ ! -e "/Library/PrivilegedHelperTools/$service" ] && [ ! -e "/Library/LaunchDaemons/$service.plist" ]; then
-                            cleanup_stop_app || return 1
-                            step_log PASS 'Service already removed; retained machine data is ready for reinstall.'
-                            return 0
+                    if [ -d '/Library/Application Support/Mimo/Service' ] || [ -d "$cleanup_support/Service" ]; then
+                        local service state
+                        for service in com.mimo.core com.mimo.supervisor com.mimo.mihomo com.mimo.pf-boot com.mimo.infrastructure com.example.exitipmonitor.daemon com.example.exitipmonitor.supervisor com.example.exitipmonitor.mihomo; do
+                            state=0; cleanup_job_state "$service" || state=$?
+                            if [ "$state" != 1 ] || [ -e "/Library/LaunchDaemons/$service.plist" ]; then
+                                step_log ERROR 'Service manager is missing but startup components remain. Repair Mimo before uninstalling.'
+                                return 1
+                            fi
+                        done
+                        if [ -e /Library/PrivilegedHelperTools/mimo-core ] || [ -e /Library/PrivilegedHelperTools/MimoUninstaller.app ] || [ -e /Library/PrivilegedHelperTools/com.example.exitipmonitor.daemon ]; then
+                            step_log ERROR 'Service manager is missing but installed helpers remain. Repair Mimo before uninstalling.'
+                            return 1
                         fi
-                        step_log ERROR 'Service manager is missing but installed components remain. Repair the service before uninstalling; shared data was retained.'
-                        return 1
+                        cleanup_stop_app || return 1
+                        step_log PASS 'Service already removed; retained machine data is ready for reinstall.'
+                        return 0
                     fi
                     cleanup_stop_app || return 1
                     if cleanup_exists "$cleanup_plist" || cleanup_exists "$cleanup_http_plist"; then cleanup_remember_provider || return 1; fi
@@ -371,12 +380,12 @@ cask "mimo" do
   # Zap removes this account's preferences, profile files and logs. Machine state and
   # System Keychain credentials remain. Retire containers from earlier sandboxed releases too.
   zap trash: [
-    "~/Library/Application Support/ExitIPMonitor",
-    "~/Library/Containers/com.example.exitipmonitor",
-    "~/Library/Containers/com.example.exitipmonitor.widgets",
-    "~/Library/Group Containers/group.com.example.exitipmonitor",
-    "~/Library/Preferences/com.example.exitipmonitor.plist",
-    "~/Library/Preferences/group.com.example.exitipmonitor.plist",
+    "~/Library/Application Support/Mimo",
+    "~/Library/Containers/com.mimo",
+    "~/Library/Containers/com.mimo.widgets",
+    "~/Library/Group Containers/group.com.mimo",
+    "~/Library/Preferences/com.mimo.plist",
+    "~/Library/Preferences/group.com.mimo.plist",
   ]
 
   caveats <<~EOS
@@ -391,7 +400,7 @@ cask "mimo" do
 
     The app is ad-hoc signed, not notarized. This cask verifies its sealed signature
     and removes quarantine from this app only. The app is named Mimo.app.
-    Existing settings, Keychain entries and service identities are retained.
+    Existing settings and Keychain entries are migrated to the Mimo identity.
     Open it with:
       open "#{appdir}/Mimo.app"
     Verify startup with:
@@ -402,7 +411,7 @@ cask "mimo" do
     and restores networking. Saved settings and
     Keychain credentials remain. Homebrew removes an unused mihomo dependency;
     explicitly installed mihomo remains until separately uninstalled.
-    The existing exit-ip-monitor cask must be uninstalled before installing Mimo.
+    The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
     Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}
   EOS
 end
