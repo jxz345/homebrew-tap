@@ -86,34 +86,32 @@ brew uninstall --cask jxz345/tap/exit-ip-monitor          # quits and removes th
 brew uninstall --zap --cask jxz345/tap/exit-ip-monitor    # also removes settings and logs
 ```
 
-## Mimo 1.0 preview
+## Mimo 1.0
 
-[Mimo](https://github.com/jxz345/mimo) supports Apple silicon Macs and IPv4 only.
-It starts a new release history, separate from Exit IP Monitor.
+[Mimo](https://github.com/jxz345/mimo) supports Apple silicon Macs with macOS 14 or later and IPv4 traffic.
 
 ```sh
+brew tap jxz345/tap
+brew trust --cask jxz345/tap/mimo
+brew trust --formula jxz345/tap/mihomo@1.19.34
 brew install --cask jxz345/tap/mimo
-open /Applications/ExitIPMonitor.app
-brew uninstall --cask jxz345/tap/mimo
+open /Applications/Mimo.app
 ```
 
-Installation requests administrator authentication and installs pinned mihomo 1.19.34.
-Mimo disables IPv6 while installed, including Direct. Uninstall removes Mimo-owned
-services, staged engine and generated runtime profiles, restores saved IPv6 flags,
-and retains settings and Keychain credentials. An unused mihomo dependency is removed
-automatically; explicitly installed mihomo is retained.
+Installation requests administrator authentication and installs the tested mihomo 1.19.34 dependency.
+Direct uses unproxied IPv4; Rule and Global require a configured proxy and a fresh exit IP on the saved allowlist.
+Mimo's machine-wide services continue running when the GUI quits. See the [release notes](https://github.com/jxz345/mimo/releases/tag/v1.0)
+for measured behavior and known protection limits. The app is ad-hoc signed, not notarized; the cask verifies its sealed signature before removing this app's quarantine.
 
-**Preview:** Direct works; Rule/Global activation is still blocked pending protected-routing
-qualification. This release must not be used to protect live traffic. See the
-[release notes](https://github.com/jxz345/mimo/releases/tag/v1.0).
+Upgrading from the earlier 1.0 preview uses `brew update` followed by `brew reinstall --cask jxz345/tap/mimo`.
+The installed app is now **Mimo.app**. The legacy `jxz345/tap/exit-ip-monitor` cask must be uninstalled first because the services conflict.
 
-The app retains its `ExitIPMonitor.app` bundle path for compatibility. Uninstall the
-legacy `jxz345/tap/exit-ip-monitor` cask first; both casks own the same app and services.
-The existing stable cask is unchanged.
+Uninstall with `brew uninstall --cask jxz345/tap/mimo`. This stops Mimo-owned services, removes the staged engine and generated runtime profiles,
+restores saved IPv6 flags and retains settings/Keychain credentials. Homebrew removes unused mihomo dependencies; explicitly installed mihomo is retained.
 
 ## Casks
 
-- **mimo**: IPv4-only Mimo preview with the pinned mihomo dependency.
+- **mimo**: IPv4 proxy routing and exit-IP monitoring with the pinned mihomo dependency.
 
 - **sleepless** (`<upstream version>-jxz.<n>`): keep your Mac awake with the lid closed, on battery,
   with no external display. The fork adds a custom auto-off timer (1 min to 24 h), restores normal

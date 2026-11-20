@@ -1,20 +1,16 @@
 # frozen_string_literal: true
 
-# Cask for the Mimo preview. Update `version` and `sha256` after each release, taking both
+# Cask for Mimo. Update `version` and `sha256` after each release, taking both
 # from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
   version "1.0"
-  sha256 "1bc8b1437c4c27b2d035020348a1712f842478a2638b491401ea173001547706"
+  sha256 "8d55815e9fa3684b09b5404c8867d173e45c647d192967b15044f16c4331d7a8"
 
   url "https://github.com/jxz345/mimo/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Mimo"
-  desc "IPv4 exit-IP monitor with shared background services (preview)"
+  desc "IPv4 proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
-
-  livecheck do
-    skip "Preview release; protected routing is not yet qualified"
-  end
 
   depends_on macos: :sonoma
   depends_on arch: :arm64
@@ -22,7 +18,7 @@ cask "mimo" do
 
   conflicts_with cask: "exit-ip-monitor"
 
-  app "ExitIPMonitor.app"
+  app "Mimo.app"
 
   # Ad-hoc signed, not notarized. A quarantined copy needs Gatekeeper's Open Anyway, which
   # macOS 27 can cancel itself (Use Password), holding the app before startup until the next
@@ -30,15 +26,15 @@ cask "mimo" do
   # and remove only its download quarantine (Sleepless's app-scoped recovery, applied before
   # the first launch). See https://github.com/jxz345/mimo#first-launch
   preflight_steps do
-    run "/usr/bin/codesign", args: ["--verify", "--deep", "--strict", "{{staged_path}}/ExitIPMonitor.app"]
-    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}/ExitIPMonitor.app"]
+    run "/usr/bin/codesign", args: ["--verify", "--deep", "--strict", "{{staged_path}}/Mimo.app"]
+    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}/Mimo.app"]
   end
 
   # One machine-wide service is required for monitoring. Failed/cancelled authentication leaves
   # the app installed with an Install Service action; optional Tailscale enablement is separate.
   postflight_steps do
     run "/bin/bash",
-        args:         ["{{appdir}}/ExitIPMonitor.app/Contents/Resources/daemon.sh", "install"],
+        args:         ["{{appdir}}/Mimo.app/Contents/Resources/daemon.sh", "install"],
         sudo:         true,
         must_succeed: false,
         print_stdout: true
@@ -51,7 +47,7 @@ cask "mimo" do
             script: {
               executable:   "/bin/bash",
               must_succeed: true,
-              args:         ["-c", <<~'SH', "--", "#{appdir}/ExitIPMonitor.app"],
+              args:         ["-c", <<~'SH', "--", "#{appdir}/Mimo.app"],
                 # BEGIN GENERATED CLEANUP
                 #!/bin/bash
                 # Shared by the release installer, launch diagnostics, and daemon setup. Bash 3.2 compatible.
@@ -94,7 +90,7 @@ cask "mimo" do
 
                 #!/bin/bash
                 # Prepare a clean uninstall/reinstall without running application code.
-                # Usage: /bin/bash cleanup-installation.sh --app /Applications/ExitIPMonitor.app
+                # Usage: /bin/bash cleanup-installation.sh --app /Applications/Mimo.app
                 # Stops only this bundle's processes and removes the optional provider. Does not delete the
                 # app, user settings, credentials or logs, install anything, or change macOS security settings.
                 # The cask embeds this file plus command-support.sh so cleanup also works with older bundles.
@@ -112,7 +108,7 @@ cask "mimo" do
                 cleanup_translocation_matches() {
                     local running=$1 expected actual
                     case "$running" in
-                        /private/var/folders/*/T/AppTranslocation/*/d/ExitIPMonitor.app|/var/folders/*/T/AppTranslocation/*/d/ExitIPMonitor.app) ;;
+                        /private/var/folders/*/T/AppTranslocation/*/d/Mimo.app|/var/folders/*/T/AppTranslocation/*/d/Mimo.app|/private/var/folders/*/T/AppTranslocation/*/d/ExitIPMonitor.app|/var/folders/*/T/AppTranslocation/*/d/ExitIPMonitor.app) ;;
                         *) return 1 ;;
                     esac
                     # Cache validated bundle paths within this invocation, never across uninstall attempts.
@@ -139,7 +135,7 @@ cask "mimo" do
                         running=${path%/Contents/MacOS/*}
                         if [ "$running" != "$cleanup_app" ] && ! [ "$running" -ef "$cleanup_app" ]; then
                             case "$running" in
-                                */T/AppTranslocation/*/d/ExitIPMonitor.app)
+                                */T/AppTranslocation/*/d/Mimo.app|*/T/AppTranslocation/*/d/ExitIPMonitor.app)
                                     cleanup_translocation_matches "$running" || {
                                         step_log ERROR "Cannot associate translocated process $pid with the target app; leaving it untouched."
                                         return 1
@@ -320,7 +316,7 @@ cask "mimo" do
                             *) echo "Unknown argument: $1" >&2; return 2 ;;
                         esac
                     done
-                    case "$cleanup_app" in /*/ExitIPMonitor.app) ;; *) echo 'Use --app with an absolute ExitIPMonitor.app path.' >&2; return 2 ;; esac
+                    case "$cleanup_app" in /*/Mimo.app|/*/ExitIPMonitor.app) ;; *) echo 'Use --app with an absolute Mimo.app path.' >&2; return 2 ;; esac
                     # Retain the lexical absolute path if an old uninstaller already removed the bundle.
                     if [ -d "$cleanup_app" ]; then cleanup_app=$(cd "$cleanup_app" && pwd -P) || return 1; fi
                     cleanup_uid=$(/usr/bin/id -u)
@@ -384,9 +380,9 @@ cask "mimo" do
   ]
 
   caveats <<~EOS
-    Mimo 1.0 is a preview for Apple silicon Macs. Direct works; Rule and Global
-    activation remain blocked until protected-routing qualification is complete.
-    Do not use this preview to protect live traffic.
+    Mimo 1.0 supports Apple silicon Macs and IPv4 traffic. Rule and Global
+    require a configured proxy and a verified exit IP on the saved allowlist.
+    See the release notes for protection boundaries and tested environments.
 
     Installation requires administrator authentication, installs pinned mihomo
     1.19.34, and disables IPv6 on network services while Mimo is installed.
@@ -394,12 +390,12 @@ cask "mimo" do
     If setup is cancelled, use Install Service or Repair Service in the app.
 
     The app is ad-hoc signed, not notarized. This cask verifies its sealed signature
-    and removes quarantine from this app only. Its bundle remains ExitIPMonitor.app
-    to preserve existing settings, Keychain entries and service identities.
+    and removes quarantine from this app only. The app is named Mimo.app.
+    Existing settings, Keychain entries and service identities are retained.
     Open it with:
-      open "#{appdir}/ExitIPMonitor.app"
+      open "#{appdir}/Mimo.app"
     Verify startup with:
-      /bin/bash "#{appdir}/ExitIPMonitor.app/Contents/Resources/diagnose-launch.sh" --launch
+      /bin/bash "#{appdir}/Mimo.app/Contents/Resources/diagnose-launch.sh" --launch
 
     Uninstall stops Mimo-owned services, removes the staged mihomo engine and
     generated runtime profiles, and restores networking. Saved settings and
