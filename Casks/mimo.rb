@@ -5,7 +5,7 @@
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
   version "1.0"
-  sha256 "8d55815e9fa3684b09b5404c8867d173e45c647d192967b15044f16c4331d7a8"
+  sha256 "f49b18d899bb9c7c9b0731ba7f63f0f86d468340cf62f61131e4a4ad7ccca4ef"
 
   url "https://github.com/jxz345/mimo/releases/download/v#{version}/ExitIPMonitor-#{version}.zip"
   name "Mimo"
@@ -40,7 +40,7 @@ cask "mimo" do
         print_stdout: true
   end
 
-  # Uninstall stops every installed client and the service through its removal grant (no password).
+  # Uninstall removes owned services/PF/runtime and per-user login items through its fixed removal grant.
   # The inline helper also supports installed releases without cleanup-installation.sh.
   # Keep in sync with Scripts/sync-homebrew-cleanup.py in exit-ip-widget.
   uninstall quit:   "com.example.exitipmonitor",
@@ -398,7 +398,8 @@ cask "mimo" do
       /bin/bash "#{appdir}/Mimo.app/Contents/Resources/diagnose-launch.sh" --launch
 
     Uninstall stops Mimo-owned services, removes the staged mihomo engine and
-    generated runtime profiles, and restores networking. Saved settings and
+    generated runtime profiles/caches, login items and private runtime group,
+    and restores networking. Saved settings and
     Keychain credentials remain. Homebrew removes an unused mihomo dependency;
     explicitly installed mihomo remains until separately uninstalled.
     The existing exit-ip-monitor cask must be uninstalled before installing Mimo.
