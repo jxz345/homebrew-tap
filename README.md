@@ -103,7 +103,13 @@ Direct uses unproxied IPv4; Rule and Global require a configured proxy and a fre
 Mimo's machine-wide services continue running when the GUI quits. See the [release notes](https://github.com/jxz345/mimo/releases/tag/v1.0)
 for measured behavior and known protection limits. The app is ad-hoc signed, not notarized; the cask verifies its sealed signature before removing this app's quarantine.
 
-Upgrading from the earlier 1.0 preview uses `brew update` followed by `brew reinstall --cask jxz345/tap/mimo`.
+To replace the earlier 1.0 preview, refresh both the tap and its cached download:
+
+```sh
+brew update
+brew fetch --force --cask jxz345/tap/mimo
+brew reinstall --cask jxz345/tap/mimo
+```
 The installed app is now **Mimo.app**. The legacy `jxz345/tap/exit-ip-monitor` cask must be uninstalled first because the services conflict.
 
 Uninstall with `brew uninstall --cask jxz345/tap/mimo`. This stops Mimo-owned services, removes the staged engine and generated runtime profiles,
