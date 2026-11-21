@@ -5,7 +5,7 @@
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
   version "1.0"
-  sha256 "344a42c052c842139e20244d44e5ee180fb6d91d07050a03b579bd8381331e2c"
+  sha256 "5053667efb21b9b448bcc768551ef7b91daa399d14fe43dbf1044ffbbb02a9a7"
 
   url "https://github.com/jxz345/mimo/releases/download/v#{version}/Mimo-#{version}.zip"
   name "Mimo"
