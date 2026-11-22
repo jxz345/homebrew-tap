@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-# Cask for Mimo. Update `version` and `sha256` after each release, taking both
-# from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
+# Cask for Mimo. Keep `version` equal to the marketing version; each build
+# updates the release URL and SHA256 (Scripts/package-release.sh generates them). Background:
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
-  version "2.0,6"
+  version "2.0"
   sha256 "14ebedbc64a781642691501499e9e94c99d326d3cb758e1671fba609322f6a31"
 
-  url "https://github.com/jxz345/mimo/releases/download/v#{version.before_comma}-build.#{version.after_comma}/Mimo-#{version.before_comma}.zip"
+  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.6/Mimo-#{version}.zip"
   name "Mimo"
   desc "IPv4 proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
@@ -416,6 +416,6 @@ cask "mimo" do
     Keychain credentials remain. Homebrew removes an unused mihomo dependency;
     explicitly installed mihomo remains until separately uninstalled.
     The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
-    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version.before_comma}-build.#{version.after_comma}
+    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.6
   EOS
 end
