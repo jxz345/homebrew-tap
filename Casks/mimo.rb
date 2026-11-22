@@ -392,7 +392,7 @@ cask "mimo" do
   ]
 
   caveats <<~EOS
-    Mimo 2.0 supports Apple silicon Macs and IPv4 traffic. Rule and Global
+    Mimo #{version} supports Apple silicon Macs and IPv4 traffic. Rule and Global
     require a configured proxy and a verified exit IP on the saved allowlist.
     See the release notes for protection boundaries and tested environments.
 
@@ -417,7 +417,8 @@ cask "mimo" do
 
     Uninstall stops Mimo-owned services, removes the staged mihomo engine and
     generated runtime profiles/caches, login items and private runtime group,
-    and restores networking. Shared settings, local credentials and logs remain. Homebrew removes an unused mihomo dependency;
+    and restores networking. Shared settings, local credentials and logs remain.
+    Homebrew removes an unused mihomo dependency;
     explicitly installed mihomo remains until separately uninstalled.
     The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
     Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.8
