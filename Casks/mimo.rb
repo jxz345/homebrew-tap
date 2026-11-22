@@ -4,10 +4,10 @@
 # updates the release URL and SHA256 (Scripts/package-release.sh generates them). Background:
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
-  version "2.0"
-  sha256 "18c4e92ca638ba2983618d37316d4082cc95a218e66f4cd2e972955f343cba08"
+  version "2.1"
+  sha256 "2426aeee4e2173da53a997dbcb79888fe013a2b04188c91019f2b4d0a6f9678b"
 
-  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.7/Mimo-#{version}.zip"
+  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.8/Mimo-#{version}.zip"
   name "Mimo"
   desc "IPv4 proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
@@ -381,7 +381,7 @@ cask "mimo" do
             }
 
   # Zap removes this account's preferences, profile files and logs. Machine state and
-  # System Keychain credentials remain. Retire containers from earlier sandboxed releases too.
+  # Shared settings and local credentials remain. Retire older sandboxed containers too.
   zap trash: [
     "~/Library/Application Support/Mimo",
     "~/Library/Containers/com.mimo",
@@ -409,7 +409,7 @@ cask "mimo" do
 
     The app is ad-hoc signed, not notarized. This cask verifies its sealed signature
     and removes quarantine from this app only. The app is named Mimo.app.
-    Existing settings and Keychain entries are migrated to the Mimo identity.
+    Existing machine Keychain credentials migrate to private local storage managed by mimo-core.
     Open it with:
       open "#{appdir}/Mimo.app"
     Verify startup with:
@@ -417,10 +417,9 @@ cask "mimo" do
 
     Uninstall stops Mimo-owned services, removes the staged mihomo engine and
     generated runtime profiles/caches, login items and private runtime group,
-    and restores networking. Saved settings and
-    Keychain credentials remain. Homebrew removes an unused mihomo dependency;
+    and restores networking. Shared settings, local credentials and logs remain. Homebrew removes an unused mihomo dependency;
     explicitly installed mihomo remains until separately uninstalled.
     The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
-    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.7
+    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.8
   EOS
 end
