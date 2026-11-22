@@ -394,8 +394,10 @@ cask "mimo" do
     See the release notes for protection boundaries and tested environments.
 
     Installation requires administrator authentication, installs pinned mihomo
-    1.19.34, and disables IPv6 on network services while Mimo is installed.
-    Direct uses unproxied IPv4. Uninstall restores the saved IPv6 enabled flags.
+    1.19.34, and disables IPv6 while Mimo manages networking.
+    Ordinary Direct uses unproxied IPv4. Stop engine and use Direct removes
+    Mimo's services and network controls, including restoring saved IPv6 flags.
+    Activate Mimo restores all services in Direct. Uninstall also restores networking.
     If setup is cancelled, use Install Service or Repair Service in the app.
 
     The app is ad-hoc signed, not notarized. This cask verifies its sealed signature
