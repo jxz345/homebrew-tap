@@ -4,8 +4,8 @@
 # from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
-  version "1.0"
-  sha256 "cdd080cc8dee57d70fc26675fe21497b521444218879c97a2299cea918c148d2"
+  version "2.0"
+  sha256 "f54c25acecf68e6b6201f5ff13c367db17a9943b121e4bcc3e6f4034c36c5a3b"
 
   url "https://github.com/jxz345/mimo/releases/download/v#{version}/Mimo-#{version}.zip"
   name "Mimo"
@@ -389,7 +389,7 @@ cask "mimo" do
   ]
 
   caveats <<~EOS
-    Mimo 1.0 supports Apple silicon Macs and IPv4 traffic. Rule and Global
+    Mimo 2.0 supports Apple silicon Macs and IPv4 traffic. Rule and Global
     require a configured proxy and a verified exit IP on the saved allowlist.
     See the release notes for protection boundaries and tested environments.
 
