@@ -5,9 +5,9 @@
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
   version "2.0"
-  sha256 "14ebedbc64a781642691501499e9e94c99d326d3cb758e1671fba609322f6a31"
+  sha256 "18c4e92ca638ba2983618d37316d4082cc95a218e66f4cd2e972955f343cba08"
 
-  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.6/Mimo-#{version}.zip"
+  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.7/Mimo-#{version}.zip"
   name "Mimo"
   desc "IPv4 proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
@@ -30,22 +30,25 @@ cask "mimo" do
     run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}/Mimo.app"]
   end
 
-  # One machine-wide service is required for monitoring. Failed/cancelled authentication leaves
-  # the app installed with an Install Service action; optional Tailscale enablement is separate.
+  # Every install/reinstall/upgrade restores all services. Failed authentication,
+  # cancelled conflict replacement or failed health verification must fail Homebrew setup.
   postflight_steps do
     run "/bin/bash",
         args:         ["{{appdir}}/Mimo.app/Contents/Resources/daemon.sh", "install"],
         sudo:         true,
-        must_succeed: false,
+        must_succeed: true,
         print_stdout: true
   end
 
-  # Uninstall removes owned services/PF/runtime and per-user login items through its fixed removal grant.
-  # The inline helper also supports installed releases without cleanup-installation.sh.
+  # The trusted inline helper runs with administrator authentication so it can
+  # stop verified clients in every account even after full Stop removed the manager.
+  # It never executes code from the target app; installed service cleanup uses the
+  # root-owned manager. The inline helper also supports older installed releases.
   # Keep in sync with Scripts/sync-homebrew-cleanup.py in mimo.
   uninstall quit:   "com.mimo",
             script: {
               executable:   "/bin/bash",
+              sudo:         true,
               must_succeed: true,
               args:         ["-c", <<~'SH', "--", "#{appdir}/Mimo.app"],
                 # BEGIN GENERATED CLEANUP
@@ -400,7 +403,9 @@ cask "mimo" do
     use Direct removes all Mimo services and old network controls, verifies native
     Tailnet DNS when connected, and keeps IP monitoring in the open app.
     Activate Mimo restores all services in Direct. Uninstall also restores networking.
-    If setup is cancelled, use Install Service or Repair Service in the app.
+    Install, reinstall and upgrade always restore and verify every Mimo service,
+    overriding previous Stop choices. Conflicting services require Stop and Continue.
+    Cancelled or failed setup is an installation failure; retry after resolving it.
 
     The app is ad-hoc signed, not notarized. This cask verifies its sealed signature
     and removes quarantine from this app only. The app is named Mimo.app.
@@ -416,6 +421,6 @@ cask "mimo" do
     Keychain credentials remain. Homebrew removes an unused mihomo dependency;
     explicitly installed mihomo remains until separately uninstalled.
     The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
-    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.6
+    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.7
   EOS
 end
