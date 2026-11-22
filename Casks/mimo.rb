@@ -4,10 +4,10 @@
 # from the release's SHA256SUMS (Scripts/package-release.sh prints them). Background:
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
-  version "2.0"
-  sha256 "f54c25acecf68e6b6201f5ff13c367db17a9943b121e4bcc3e6f4034c36c5a3b"
+  version "2.0,6"
+  sha256 "14ebedbc64a781642691501499e9e94c99d326d3cb758e1671fba609322f6a31"
 
-  url "https://github.com/jxz345/mimo/releases/download/v#{version}/Mimo-#{version}.zip"
+  url "https://github.com/jxz345/mimo/releases/download/v#{version.before_comma}-build.#{version.after_comma}/Mimo-#{version.before_comma}.zip"
   name "Mimo"
   desc "IPv4 proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
@@ -222,7 +222,7 @@ cask "mimo" do
 
                 cleanup_privileged() {
                     local timeout=10
-                    case "$1" in /Library/PrivilegedHelperTools/mimo-manage|/Library/PrivilegedHelperTools/com.example.exitipmonitor.manage) timeout=90 ;; esac
+                    case "$1" in /Library/PrivilegedHelperTools/mimo-manage|/Library/PrivilegedHelperTools/com.example.exitipmonitor.manage) timeout=180 ;; esac
                     if [ "$(/usr/bin/id -u)" = 0 ]; then
                         bounded_command "$timeout" remove-provider "$@"
                     else
@@ -393,10 +393,12 @@ cask "mimo" do
     require a configured proxy and a verified exit IP on the saved allowlist.
     See the release notes for protection boundaries and tested environments.
 
-    Installation requires administrator authentication, installs pinned mihomo
-    1.19.34, and disables IPv6 while Mimo manages networking.
-    Ordinary Direct uses unproxied IPv4. Stop engine and use Direct removes
-    Mimo's services and network controls, including restoring saved IPv6 flags.
+    Installation requires administrator authentication and installs pinned mihomo
+    1.19.34. The protected profile captures and rejects IPv6. Active Rule/Global
+    use profile routing; Mimo's packet firewall rules apply only during transitions.
+    Ordinary Direct releases Mimo's DNS and firewall controls. Stop engine and
+    use Direct removes all Mimo services and old network controls, verifies native
+    Tailnet DNS when connected, and keeps IP monitoring in the open app.
     Activate Mimo restores all services in Direct. Uninstall also restores networking.
     If setup is cancelled, use Install Service or Repair Service in the app.
 
@@ -414,6 +416,6 @@ cask "mimo" do
     Keychain credentials remain. Homebrew removes an unused mihomo dependency;
     explicitly installed mihomo remains until separately uninstalled.
     The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
-    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}
+    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version.before_comma}-build.#{version.after_comma}
   EOS
 end
