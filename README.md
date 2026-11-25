@@ -86,37 +86,38 @@ brew uninstall --cask jxz345/tap/exit-ip-monitor          # quits and removes th
 brew uninstall --zap --cask jxz345/tap/exit-ip-monitor    # also removes settings and logs
 ```
 
-## Mimo 1.0
+## Mimo 3.0
 
-[Mimo](https://github.com/jxz345/mimo) supports Apple silicon Macs with macOS 14 or later and IPv4 traffic.
+[Mimo](https://github.com/jxz345/mimo) supports Apple silicon Macs with macOS 14 or later,
+with strict IPv4 and dual-stack proxy policies and exit-IP monitoring.
 
 ```sh
-brew trust --formula jxz345/tap/mihomo@1.19.34
 brew install --cask jxz345/tap/mimo
 open /Applications/Mimo.app
 ```
 
-Installation requests administrator authentication and installs the tested mihomo 1.19.34 dependency.
-Direct uses unproxied IPv4; Rule and Global require a configured proxy and a fresh exit IP on the saved allowlist.
-Mimo's machine-wide services continue running when the GUI quits. See the [release notes](https://github.com/jxz345/mimo/releases/tag/v1.0)
+Installation requests administrator authentication and installs Mimo's bundled, pinned Mihomo engine and daemons.
+Direct releases Mimo's network controls; Rule and Global require a configured proxy and fresh allowlisted observations for each required address family.
+Mimo's machine-wide services continue running when the GUI quits. See the [release notes](https://github.com/jxz345/mimo/releases/tag/v3.0-build.10)
 for measured behavior and known protection limits. The app is ad-hoc signed, not notarized; the cask verifies its sealed signature before removing this app's quarantine.
 
-To replace an earlier 1.0 build, refresh the repository and cached download:
+Homebrew's version remains **3.0**; the app identifies **build 10**. To replace an earlier 3.0 build:
 
 ```sh
 brew update
-brew fetch --force --cask jxz345/tap/mimo
 brew reinstall --cask jxz345/tap/mimo
 ```
 The installed app is now **Mimo.app**. The legacy `jxz345/tap/exit-ip-monitor` cask must be uninstalled first because the services conflict.
 
-Uninstall with `brew uninstall --cask jxz345/tap/mimo`. This removes Mimo-owned services, PF/boot policy, login registrations, generated profiles/caches and cleanup helpers, and restores networking. Saved settings, Keychain credentials and logs remain. Homebrew removes unused mihomo dependencies; explicitly installed mihomo is retained. Deleting Mimo.app alone leaves services and firewall rules installed; the same Homebrew uninstall command still works afterward.
+Uninstall with `brew uninstall --cask jxz345/tap/mimo`. This removes Mimo-owned services, PF/boot policy, DNS controls, login registrations, generated profiles/caches and cleanup helpers, and restores networking. Saved settings, locally stored credentials and logs remain. No separate Mihomo formula is needed. Before deleting Mimo.app manually, use **Stop engine and use Direct** and wait for cleanup to complete. Homebrew uninstall also handles an app that has already been deleted.
+
+Install, reinstall, upgrade and Activate restore every owned service, including an engine previously stopped. A conflicting engine requires confirmation before replacement; Tailscale is not stopped. Build 10 preserves incoming TCP service replies during outbound blocks and provides clear failure reasons and explicit Direct recovery. General UDP-server behavior and physical sleep/wake retain their documented qualification limits.
 
 Current app, service and archive names use Mimo. Existing settings and credentials migrate from the former identity. The standalone removal command is `sudo /Library/PrivilegedHelperTools/mimo-manage uninstall`. The dashboard also displays the Homebrew uninstall command. No separate `brew tap` step is needed.
 
 ## Casks
 
-- **mimo**: IPv4 proxy routing and exit-IP monitoring with the pinned mihomo dependency.
+- **mimo**: IPv4/dual-stack proxy routing and exit-IP monitoring with a bundled, pinned engine.
 
 - **sleepless** (`<upstream version>-jxz.<n>`): keep your Mac awake with the lid closed, on battery,
   with no external display. The fork adds a custom auto-off timer (1 min to 24 h), restores normal
