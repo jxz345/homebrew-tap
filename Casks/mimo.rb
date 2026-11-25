@@ -4,17 +4,16 @@
 # updates the release URL and SHA256 (Scripts/package-release.sh generates them). Background:
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
-  version "2.1"
-  sha256 "2426aeee4e2173da53a997dbcb79888fe013a2b04188c91019f2b4d0a6f9678b"
+  version "3.0"
+  sha256 "9c8e20e32a5198e5f473db02d2e025f71fee69c4ae18b6685b47071123d75da7"
 
-  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.8/Mimo-#{version}.zip"
+  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.9/Mimo-#{version}.zip"
   name "Mimo"
-  desc "IPv4 proxy routing and exit-IP monitoring"
+  desc "IPv4 and dual-stack proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
 
   depends_on macos: :sonoma
   depends_on arch: :arm64
-  depends_on formula: "jxz345/tap/mihomo@1.19.34"
 
   conflicts_with cask: "exit-ip-monitor"
 
@@ -392,13 +391,15 @@ cask "mimo" do
   ]
 
   caveats <<~EOS
-    Mimo #{version} supports Apple silicon Macs and IPv4 traffic. Rule and Global
+    Mimo #{version} supports Apple silicon Macs, strict IPv4 and dual-stack traffic.
+    Rule and Global
     require a configured proxy and a verified exit IP on the saved allowlist.
     See the release notes for protection boundaries and tested environments.
 
-    Installation requires administrator authentication and installs pinned mihomo
-    1.19.34. The protected profile captures and rejects IPv6. Active Rule/Global
-    use profile routing; Mimo's packet firewall rules apply only during transitions.
+    Installation requires administrator authentication and uses the bundled, pinned
+    Mihomo 1.19.34-mimo-v3.2 engine. Strict IPv4 captures and rejects public IPv6;
+    dual-stack proxies supported IPv6 traffic. Public ping/ping6 is silently blocked.
+    Active Rule/Global uses profile routing plus a firewall guard against native fallback.
     Ordinary Direct releases Mimo's DNS and firewall controls. Stop engine and
     use Direct removes all Mimo services and old network controls, verifies native
     Tailnet DNS when connected, and keeps IP monitoring in the open app.
@@ -418,9 +419,8 @@ cask "mimo" do
     Uninstall stops Mimo-owned services, removes the staged mihomo engine and
     generated runtime profiles/caches, login items and private runtime group,
     and restores networking. Shared settings, local credentials and logs remain.
-    Homebrew removes an unused mihomo dependency;
-    explicitly installed mihomo remains until separately uninstalled.
+    Mimo bundles its engine; a separately installed mihomo is not required or removed.
     The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
-    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.8
+    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.9
   EOS
 end
