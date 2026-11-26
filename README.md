@@ -97,11 +97,11 @@ open /Applications/Mimo.app
 ```
 
 Installation requests administrator authentication and installs Mimo's bundled, pinned Mihomo engine and daemons.
-Direct releases Mimo's network controls; Rule and Global require a configured proxy and fresh allowlisted observations for each required address family.
-Mimo's machine-wide services continue running when the GUI quits. See the [release notes](https://github.com/jxz345/mimo/releases/tag/v3.0-build.10)
+Direct releases Mimo's network controls; Rule and Global require a configured proxy and one fresh allowlisted IPv4 exit in both strict IPv4 and Dual-stack. There is no IPv6 allowlist.
+Mimo's machine-wide services continue running when the GUI quits. See the [release notes](https://github.com/jxz345/mimo/releases/tag/v3.0-build.11)
 for measured behavior and known protection limits. The app is ad-hoc signed, not notarized; the cask verifies its sealed signature before removing this app's quarantine.
 
-Homebrew's version remains **3.0**; the app identifies **build 10**. To replace an earlier 3.0 build:
+Homebrew's version remains **3.0**; the app identifies **build 11**. To replace an earlier 3.0 build:
 
 ```sh
 brew update
@@ -111,7 +111,7 @@ The installed app is now **Mimo.app**. The legacy `jxz345/tap/exit-ip-monitor` c
 
 Uninstall with `brew uninstall --cask jxz345/tap/mimo`. This removes Mimo-owned services, PF/boot policy, DNS controls, login registrations, generated profiles/caches and cleanup helpers, and restores networking. Saved settings, locally stored credentials and logs remain. No separate Mihomo formula is needed. Before deleting Mimo.app manually, use **Stop engine and use Direct** and wait for cleanup to complete. Homebrew uninstall also handles an app that has already been deleted.
 
-Install, reinstall, upgrade and Activate restore every owned service, including an engine previously stopped. A conflicting engine requires confirmation before replacement; Tailscale is not stopped. Build 10 preserves incoming TCP service replies during outbound blocks and provides clear failure reasons and explicit Direct recovery. General UDP-server behavior and physical sleep/wake retain their documented qualification limits.
+Install, reinstall, upgrade and Activate restore every owned service, including an engine previously stopped. A conflicting engine requires confirmation before replacement; Tailscale is not stopped. Incoming TCP service replies remain available during outbound blocks. Build 11 improves blocked-session retry and event handling, preserves rejected IPv4 observations, compacts the dashboard and adds bounded log rotation/retention. General UDP-server behavior and physical sleep/wake retain their documented qualification limits.
 
 Current app, service and archive names use Mimo. Existing settings and credentials migrate from the former identity. The standalone removal command is `sudo /Library/PrivilegedHelperTools/mimo-manage uninstall`. The dashboard also displays the Homebrew uninstall command. No separate `brew tap` step is needed.
 
