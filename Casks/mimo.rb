@@ -5,9 +5,9 @@
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
   version "3.0"
-  sha256 "aa8e1c8e263d3668360d8acaccf826be8fb44b93ed474443586f9ef27b817382"
+  sha256 "15bda33947f44a8abcb9bba2bfa810a978b8d04e91ac7104f4d51c67f51a9414"
 
-  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.10/Mimo-#{version}.zip"
+  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.11/Mimo-#{version}.zip"
   name "Mimo"
   desc "IPv4 and dual-stack proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
@@ -421,6 +421,6 @@ cask "mimo" do
     and restores networking. Shared settings, local credentials and logs remain.
     Mimo bundles its engine; a separately installed mihomo is not required or removed.
     The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
-    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.10
+    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.11
   EOS
 end
