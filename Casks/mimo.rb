@@ -4,10 +4,10 @@
 # updates the release URL and SHA256 (Scripts/package-release.sh generates them). Background:
 # https://github.com/jxz345/mimo#first-launch
 cask "mimo" do
-  version "3.0"
-  sha256 "15bda33947f44a8abcb9bba2bfa810a978b8d04e91ac7104f4d51c67f51a9414"
+  version "3.1"
+  sha256 "53af2899718a80a956baff03c97e77f65e8f01d62e1e55a815fee531c5946d57"
 
-  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.11/Mimo-#{version}.zip"
+  url "https://github.com/jxz345/mimo/releases/download/v#{version}-build.12/Mimo-#{version}.zip"
   name "Mimo"
   desc "IPv4 and dual-stack proxy routing and exit-IP monitoring"
   homepage "https://github.com/jxz345/mimo"
@@ -352,7 +352,7 @@ cask "mimo" do
                                 return 1
                             fi
                         done
-                        if [ -e /Library/PrivilegedHelperTools/mimo-core ] || [ -e /Library/PrivilegedHelperTools/MimoUninstaller.app ] || [ -e /Library/PrivilegedHelperTools/com.example.exitipmonitor.daemon ]; then
+                        if [ -e /Library/PrivilegedHelperTools/mimo-core ] || [ -e "/Library/Application Support/Mimo/LaunchHelpers" ] || [ -e /Library/PrivilegedHelperTools/MimoUninstaller.app ] || [ -e /Library/PrivilegedHelperTools/com.example.exitipmonitor.daemon ]; then
                             step_log ERROR 'Service manager is missing but installed helpers remain. Repair Mimo before uninstalling.'
                             return 1
                         fi
@@ -400,7 +400,8 @@ cask "mimo" do
     Mihomo 1.19.34-mimo-v3.2 engine. Strict IPv4 captures and rejects public IPv6;
     dual-stack proxies supported IPv6 traffic. Public ping/ping6 is silently blocked.
     Active Rule/Global uses profile routing plus a firewall guard against native fallback.
-    Ordinary Direct releases Mimo's DNS and firewall controls. Stop engine and
+    Ordinary Direct releases outgoing restrictions and DNS override, retaining only
+    incoming TCP tracking. Stop engine and
     use Direct removes all Mimo services and old network controls, verifies native
     Tailnet DNS when connected, and keeps IP monitoring in the open app.
     Activate Mimo restores all services in Direct. Uninstall also restores networking.
@@ -421,6 +422,6 @@ cask "mimo" do
     and restores networking. Shared settings, local credentials and logs remain.
     Mimo bundles its engine; a separately installed mihomo is not required or removed.
     The legacy exit-ip-monitor cask must be uninstalled before installing Mimo.
-    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.11
+    Release notes: https://github.com/jxz345/mimo/releases/tag/v#{version}-build.12
   EOS
 end
